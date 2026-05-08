@@ -1,7 +1,7 @@
 import numpy as np
 import precice
 
-participant = precice.Participant("Macro", "precice-config.xml", 0, 1)
+participant = precice.Participant("Macro", "../precice-config.xml", 0, 1)
 
 mesh_name = "Macro-Mesh"
 vertex = np.array([[0.5, 0.5, 0.5], [0.2, 0.5, 0.5]], dtype=float)

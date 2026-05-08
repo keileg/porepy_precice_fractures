@@ -12,8 +12,8 @@ class MicroSimulation():
         Constructor of MicroSimulation class.
         """
         self._sim_id = sim_id
-        self._root_path = f"./micro/micro-runs/micro-{sim_id}"
-        FoamCase("./micro/example").clone(self._root_path)
+        self._root_path = f"./micro-runs/micro-{sim_id}"
+        FoamCase("./example").clone(self._root_path)
         print(f"Sim {sim_id} created {self._root_path}")
 
     def initialize(self, initial_data=None):
