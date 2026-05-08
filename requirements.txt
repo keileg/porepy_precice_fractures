@@ -1,0 +1,3 @@
+pyprecice
+foamlib[postprocessing]
+micro-manager-precice
