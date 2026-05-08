@@ -1,3 +1,4 @@
 pyprecice
 foamlib[postprocessing]
 micro-manager-precice
+porepy[development] @ git+https://github.com/pmgbergen/porepy.git
