@@ -26,7 +26,7 @@
 
   <m2n:sockets acceptor="Micro-Manager"
     connector="Macro"
-    exchange-directory="." />
+    exchange-directory=".." />
 
   <coupling-scheme:serial-explicit>
     <participants first="Macro" second="Micro-Manager"/>
