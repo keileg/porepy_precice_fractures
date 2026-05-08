@@ -48,3 +48,6 @@ dynamicCode
 .project
 .settings/
 *.swp
+
+# micro sim
+micro-runs/
