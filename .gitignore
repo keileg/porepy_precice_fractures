@@ -1,0 +1,50 @@
+# General log files
+*.log
+out
+
+# Common result files
+*.vtk
+*.vtu
+*.pvd
+*.series
+
+# preCICE
+precice-profiling/
+precice-run/
+core
+profiling.json
+profiling.db
+profiling.csv
+trace.json
+profiling.pftrace
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# OpenFOAM
+0.*/
+[1-9]*/
+!0/
+functionObjectProperties
+*/phi*
+*/meshPhi*
+processor*/
+history
+**/constant/polyMesh/
+postProcessing/
+*.foam
+*.OpenFOAM
+dynamicCode
+
+# General editor and OS files
+.vscode
+*.DS_STORE
+.idea
+*.bak
+*~
+.cproject
+.project
+.settings/
+*.swp
