@@ -30,8 +30,8 @@
 
   <coupling-scheme:serial-explicit>
     <participants first="Macro" second="Micro-Manager"/>
-    <time-window-size value="1.0"/>
-    <max-time value="3.0"/>
+    <time-window-size value="0.1"/>
+    <max-time value="0.3"/>
     <exchange data="pressure-difference" mesh="Macro-Mesh" from="Macro" to="Micro-Manager"/>
     <exchange data="flux" mesh="Macro-Mesh" from="Micro-Manager" to="Macro"/>
   </coupling-scheme:serial-explicit>
