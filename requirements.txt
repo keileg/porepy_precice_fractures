@@ -1,6 +1,6 @@
 pyprecice
 foamlib[postprocessing]
 micro-manager-precice
-porepy[development] @ git+https://github.com/pmgbergen/porepy.git
+porepy[development] @ git+https://github.com/pmgbergen/porepy.git@305a86d
 classy_blocks
 typing_extensions # required by classy_blocks
