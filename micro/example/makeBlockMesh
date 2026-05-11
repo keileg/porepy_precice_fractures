@@ -4,63 +4,60 @@ from classy_blocks import Mesh, Face, Extrude, Spline
 from pathlib import Path
 import numpy as np
 
-amp = 0.01
-wav = 10
-NP = 100
+def meshFor(nx:int, amplitude:float, waves:int):
+    l, r = 0.0, 1.0
+    t, b = 0.1, 0.0
+
+    xs = np.linspace(l, r, nx)
+    ys = np.sin(waves*2*np.pi*xs)*amplitude
+
+    top = [ [x, t+dy, 0.0 ] for x, dy in zip(xs, ys) ]
+    bot = [ [x, b-dy, 0.0 ] for x, dy in zip(xs, ys) ]
+
+    points = [
+            bot[0],
+            bot[-1],
+            top[-1],
+            top[0]
+            ]
+
+    edges = [
+            Spline(bot[1:-2]),
+            None,
+            Spline(top[1:-2][::-1]),
+            None,
+            ]
+
+    # create base face and extrude to a hex
+    face = Face(points, edges)
+    block = Extrude(face, amount=[0, 0, 0.1])
+
+    # set patches
+    block.set_patch("left", "inlet")
+    block.set_patch("right", "outlet")
+    block.set_patch("front", "frontAndBack")
+    block.set_patch("back", "frontAndBack")
+    block.set_patch("top", "upperWall")
+    block.set_patch("bottom", "lowerWall")  
+
+    mesh = Mesh()
+    mesh.add(block)
+
+    # update patches
+    mesh.modify_patch("frontAndBack", "empty")
+    mesh.modify_patch("upperWall", "wall")
+    mesh.modify_patch("lowerWall", "wall")
+
+    # flow direction
+    block.chop(0, count=100)
+    # top-bottom (wall)
+    block.chop(1, length_ratio=0.25, count=4)
+    block.chop(1, length_ratio=0.50, count=4)
+    block.chop(1, length_ratio=0.25, count=4)
+    # back-front (empty)
+    block.chop(2, count=10)
+
+    return mesh
 
 
-l, r = 0.0, 1.0
-t, b = 0.1, 0.0
-
-xs = np.linspace(l, r, NP)
-ys = np.sin(wav*2*np.pi*xs)*amp
-
-top = [ [x, t+dy, 0.0 ] for x, dy in zip(xs, ys) ]
-bot = [ [x, b-dy, 0.0 ] for x, dy in zip(xs, ys) ]
-
-points = [
-        bot[0],
-        bot[-1],
-        top[-1],
-        top[0]
-        ]
-
-edges = [
-        Spline(bot[1:-2]),
-        None,
-        Spline(top[1:-2][::-1]),
-        None,
-        ]
-
-# create base face and extrude to a hex
-face = Face(points, edges)
-block = Extrude(face, amount=[0, 0, 0.1])
-
-# set patches
-block.set_patch("left", "inlet")
-block.set_patch("right", "outlet")
-block.set_patch("front", "frontAndBack")
-block.set_patch("back", "frontAndBack")
-block.set_patch("top", "upperWall")
-block.set_patch("bottom", "lowerWall")  
-
-mesh = Mesh()
-mesh.add(block)
-
-# update patches
-mesh.modify_patch("frontAndBack", "empty")
-mesh.modify_patch("upperWall", "wall")
-mesh.modify_patch("lowerWall", "wall")
-
-# x: flow direction
-block.chop(0, count=100)
-# z: back-front
-block.chop(1, count=10)
-#block.chop(2, count=10)
-# y: top-bottom: wall
-block.chop(2, length_ratio=0.1, count=4)
-block.chop(2, length_ratio=0.8, count=4)
-block.chop(2, length_ratio=0.1, count=4)
-
-dir=Path(__file__).parent
-mesh.write(dir / "system"/ "blockMeshDict")
+meshFor(nx=100, amplitude=0.01, waves=10).write(Path(__file__).parent / "system"/ "blockMeshDict")
