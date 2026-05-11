@@ -1,19 +1,40 @@
 #!python3
 
-from classy_blocks import Mesh, Face, Extrude
+from classy_blocks import Mesh, Face, Extrude, Spline
 from pathlib import Path
+import numpy as np
+
+amp = 0.02
+wav = 4
+NP = 40
+
 
 l, r = 0.0, 1.0
 t, b = 0.1, 0.0
 
-p0 = [l, 0.0, t]
-p1 = [r, 0.0, t]
-p2 = [r, 0.0, b]
-p3 = [l, 0.0, b]
+xs = np.linspace(l, r, NP)
+ys = np.sin(wav*2*np.pi*xs)*amp
+
+top = [ [x, t+dy, 0.0 ] for x, dy in zip(xs, ys) ]
+bot = [ [x, b+dy, 0.0 ] for x, dy in zip(xs, ys) ]
+
+points = [
+        top[0],
+        top[-1],
+        bot[-1],
+        bot[0]
+        ]
+
+edges = [
+        Spline(top[1:-1])
+        None,
+        Spline(bot[1:-1])
+        None,
+        ]
 
 # create base face and extrude to a hex
-face = Face([p0, p1, p2, p3])
-block = Extrude(face, amount=[0, 0.1, 0])
+face = Face([p0, p1, p2, p3], edges)
+block = Extrude(face, amount=[0, 0, 0.1])
 
 # set patches
 block.set_patch("left", "inlet")
@@ -35,10 +56,11 @@ mesh.modify_patch("lowerWall", "wall")
 block.chop(0, count=100)
 # z: back-front
 block.chop(1, count=10)
+block.chop(2, count=10)
 # y: top-bottom: wall
-block.chop(2, length_ratio=0.1, count=4)
-block.chop(2, length_ratio=0.8, count=4)
-block.chop(2, length_ratio=0.1, count=4)
+#block.chop(2, length_ratio=0.1, count=4)
+#block.chop(2, length_ratio=0.8, count=4)
+#block.chop(2, length_ratio=0.1, count=4)
 
 dir=Path(__file__).parent
 mesh.write(dir / "system"/ "blockMeshDict")
