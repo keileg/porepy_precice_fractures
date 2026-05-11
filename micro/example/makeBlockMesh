@@ -35,10 +35,10 @@ def meshFor(nx:int, amplitude:float, waves:int):
     # set patches
     block.set_patch("left", "inlet")
     block.set_patch("right", "outlet")
-    block.set_patch("front", "frontAndBack")
-    block.set_patch("back", "frontAndBack")
-    block.set_patch("top", "upperWall")
-    block.set_patch("bottom", "lowerWall")  
+    block.set_patch("top", "frontAndBack")
+    block.set_patch("bottom", "frontAndBack")
+    block.set_patch("front", "lowerWall")  
+    block.set_patch("back", "upperWall")
 
     mesh = Mesh()
     mesh.add(block)

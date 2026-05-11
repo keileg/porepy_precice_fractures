@@ -2,7 +2,7 @@
 | =========                |                                                 |
 | \      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
 |  \    /   O peration     | Script: ./makeBlockMesh                         |
-|   \  /    A nd           | Time: 2026-05-11 10:35:22.965061                |
+|   \  /    A nd           | Time: 2026-05-11 10:40:48.413047                |
 |    \/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
 FoamFile
@@ -41,31 +41,22 @@ edges
 
 boundary
 (
-	lowerWall
-	{
-		type wall;
-		faces
-		(
-			(0 1 2 3)
-		);
-	}
-
-	upperWall
-	{
-		type wall;
-		faces
-		(
-			(4 5 6 7)
-		);
-	}
-
 	frontAndBack
 	{
 		type empty;
 		faces
 		(
+			(4 5 6 7)
+			(0 1 2 3)
+		);
+	}
+
+	lowerWall
+	{
+		type wall;
+		faces
+		(
 			(4 5 1 0)
-			(7 6 2 3)
 		);
 	}
 
@@ -75,6 +66,15 @@ boundary
 		faces
 		(
 			(5 1 2 6)
+		);
+	}
+
+	upperWall
+	{
+		type wall;
+		faces
+		(
+			(7 6 2 3)
 		);
 	}
 
