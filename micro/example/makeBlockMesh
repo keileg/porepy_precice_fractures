@@ -1,44 +1,80 @@
 #!python3
 
-from classy_blocks import Mesh, Face, Extrude
+from classy_blocks import Mesh, Face, Extrude, Spline
 from pathlib import Path
+import numpy as np
+import argparse
 
-l, r = 0.0, 1.0
-t, b = 0.1, 0.0
+def meshFor(nx:int, amplitude:float, waves:int, aperture:float, shift:float):
+    l, r = 0.0, 1.0
+    t, b = aperture, 0.0
 
-p0 = [l, 0.0, t]
-p1 = [r, 0.0, t]
-p2 = [r, 0.0, b]
-p3 = [l, 0.0, b]
+    xs = np.linspace(l, r, nx)
+    ys = np.sin(waves*2*np.pi*xs)*amplitude
+    ys_shifted = np.sin(waves*2*np.pi*xs + shift*2*np.pi)*amplitude
 
-# create base face and extrude to a hex
-face = Face([p0, p1, p2, p3])
-block = Extrude(face, amount=[0, 0.1, 0])
+    top = [ [x, t+dy, 0.0 ] for x, dy in zip(xs, ys) ]
+    bot = [ [x, b+dy, 0.0 ] for x, dy in zip(xs, ys_shifted) ]
 
-# set patches
-block.set_patch("left", "inlet")
-block.set_patch("right", "outlet")
-block.set_patch("front", "frontAndBack")
-block.set_patch("back", "frontAndBack")
-block.set_patch("top", "upperWall")
-block.set_patch("bottom", "lowerWall")  
+    points = [
+            bot[0],
+            bot[-1],
+            top[-1],
+            top[0]
+            ]
 
-mesh = Mesh()
-mesh.add(block)
+    edges = [
+            Spline(bot[1:-2]),
+            None,
+            Spline(top[1:-2][::-1]),
+            None,
+            ]
 
-# update patches
-mesh.modify_patch("frontAndBack", "empty")
-mesh.modify_patch("upperWall", "wall")
-mesh.modify_patch("lowerWall", "wall")
+    # create base face and extrude to a hex
+    face = Face(points, edges)
+    block = Extrude(face, amount=[0, 0, 0.1])
 
-# x: flow direction
-block.chop(0, count=100)
-# z: back-front
-block.chop(1, count=10)
-# y: top-bottom: wall
-block.chop(2, length_ratio=0.1, count=4)
-block.chop(2, length_ratio=0.8, count=4)
-block.chop(2, length_ratio=0.1, count=4)
+    # set patches
+    block.set_patch("left", "inlet")
+    block.set_patch("right", "outlet")
+    block.set_patch("top", "frontAndBack")
+    block.set_patch("bottom", "frontAndBack")
+    block.set_patch("front", "lowerWall")  
+    block.set_patch("back", "upperWall")
 
-dir=Path(__file__).parent
-mesh.write(dir / "system"/ "blockMeshDict")
+    mesh = Mesh()
+    mesh.add(block)
+
+    # update patches
+    mesh.modify_patch("frontAndBack", "empty")
+    mesh.modify_patch("upperWall", "wall")
+    mesh.modify_patch("lowerWall", "wall")
+
+    # flow direction
+    block.chop(0, count=100)
+    # top-bottom (wall)
+    block.chop(1, length_ratio=0.25, count=4)
+    block.chop(1, length_ratio=0.50, count=4)
+    block.chop(1, length_ratio=0.25, count=4)
+    # back-front (empty)
+    block.chop(2, count=10)
+
+    return mesh
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-n", default=100, type=int, help="points in x direction")
+    parser.add_argument("-a", default=0.01, type=float, help="ampliture of wall wave")
+    parser.add_argument("-w", default=10, type=int, help="full waves per wall")
+
+    parser.add_argument("-b", default=0.1, type=float, help="aperture of fracture")
+    parser.add_argument("-s", default=0.0, type=float, help="phase shift of one of the walls")
+
+    args = parser.parse_args()
+
+    meshFor(nx=args.n, amplitude=args.a, waves=args.w, aperture=args.b, shift=args.s).write(Path(__file__).parent / "system"/ "blockMeshDict")
+
+
+if __name__ == "__main__":
+    main()
