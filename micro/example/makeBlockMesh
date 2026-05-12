@@ -3,16 +3,18 @@
 from classy_blocks import Mesh, Face, Extrude, Spline
 from pathlib import Path
 import numpy as np
+import argparse
 
-def meshFor(nx:int, amplitude:float, waves:int):
+def meshFor(nx:int, amplitude:float, waves:int, aperture:float, shift:float):
     l, r = 0.0, 1.0
-    t, b = 0.1, 0.0
+    t, b = aperture, 0.0
 
     xs = np.linspace(l, r, nx)
     ys = np.sin(waves*2*np.pi*xs)*amplitude
+    ys_shifted = np.sin(waves*2*np.pi*xs + shift*2*np.pi)*amplitude
 
     top = [ [x, t+dy, 0.0 ] for x, dy in zip(xs, ys) ]
-    bot = [ [x, b-dy, 0.0 ] for x, dy in zip(xs, ys) ]
+    bot = [ [x, b+dy, 0.0 ] for x, dy in zip(xs, ys_shifted) ]
 
     points = [
             bot[0],
@@ -60,4 +62,19 @@ def meshFor(nx:int, amplitude:float, waves:int):
     return mesh
 
 
-meshFor(nx=100, amplitude=0.01, waves=10).write(Path(__file__).parent / "system"/ "blockMeshDict")
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-n", default=100, type=int, help="points in x direction")
+    parser.add_argument("-a", default=0.01, type=float, help="ampliture of wall wave")
+    parser.add_argument("-w", default=10, type=int, help="full waves per wall")
+
+    parser.add_argument("-b", default=0.1, type=float, help="aperture of fracture")
+    parser.add_argument("-s", default=0.0, type=float, help="phase shift of one of the walls")
+
+    args = parser.parse_args()
+
+    meshFor(nx=args.n, amplitude=args.a, waves=args.w, aperture=args.b, shift=args.s).write(Path(__file__).parent / "system"/ "blockMeshDict")
+
+
+if __name__ == "__main__":
+    main()
