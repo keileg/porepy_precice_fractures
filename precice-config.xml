@@ -7,7 +7,7 @@
   <data:scalar name="pressure-difference"/>
   <data:scalar name="flux"/>
 
-  <mesh name="Macro-Mesh" dimensions="3">
+  <mesh name="Macro-Mesh" dimensions="2">
     <use-data name="pressure-difference"/>
     <use-data name="flux"/>
   </mesh>
@@ -28,11 +28,13 @@
     connector="Macro"
     exchange-directory=".." />
 
-  <coupling-scheme:serial-explicit>
+  <coupling-scheme:serial-implicit>
     <participants first="Macro" second="Micro-Manager"/>
     <time-window-size value="0.1"/>
     <max-time value="0.3"/>
+    <max-iterations value="15" />
     <exchange data="pressure-difference" mesh="Macro-Mesh" from="Macro" to="Micro-Manager"/>
     <exchange data="flux" mesh="Macro-Mesh" from="Micro-Manager" to="Macro"/>
-  </coupling-scheme:serial-explicit>
+    <relative-convergence-measure data="pressure-difference" mesh="Macro-Mesh" limit="1e-7"/>
+  </coupling-scheme:serial-implicit>
 </precice-configuration>

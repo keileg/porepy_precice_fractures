@@ -21,6 +21,10 @@ class MicroSimulation():
 
     def solve(self, macro_data, dt):
         dp = macro_data["pressure-difference"]
+        
+        if dp == 0:
+            return {"flux": 0.0}
+            
         fc = FoamCase(self._root_path)
 
         with fc[0]["p"] as f:
@@ -39,9 +43,11 @@ class MicroSimulation():
         file = functionobject(file_name="surfaceFieldValue.dat", folder="outletFlux")
         fluxes = load_tables(source=file, dir_name=self._root_path)
         flux = fluxes["sum(phi)"][1]
+        print("flux on sim ", self._sim_id, " flux", flux)
+        perturbed_flux = flux * (self._sim_id / 16 + 0.5)
         fc.clean(check=True)
 
-        return {"flux": flux}
+        return {"flux": perturbed_flux}
 
     def set_state(self, state):
         self._root_path = copy(state[0])
@@ -56,4 +62,4 @@ class MicroSimulation():
         self._sim_id = global_id
 
     def output(self):
-        pass
+        pass 
