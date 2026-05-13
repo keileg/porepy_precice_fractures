@@ -1,7 +1,7 @@
 /*--------------------------------*- C++ -*----------------------------------*\
 | =========                 |                                                 |
 | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
-|  \\    /   O peration     | Version:  v2412                                 |
+|  \\    /   O peration     | Version:  v2506                                 |
 |   \\  /    A nd           | Website:  www.openfoam.com                      |
 |    \\/     M anipulation  |                                                 |
 \*---------------------------------------------------------------------------*/
@@ -10,6 +10,7 @@ FoamFile
     version     2.0;
     format      ascii;
     class       dictionary;
+    location    "system";
     object      controlDict;
 }
 // * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
@@ -22,15 +23,13 @@ startTime       0;
 
 stopAt          endTime;
 
-endTime         1;
+endTime         10;
 
 deltaT          0.1;
 
 writeControl    timeStep;
 
-writeInterval   5;
-
-purgeWrite      0;
+writeInterval   1;
 
 writeFormat     ascii;
 
@@ -44,26 +43,5 @@ timePrecision   6;
 
 runTimeModifiable true;
 
-functions
-{
-    outletFlux
-    {
-        type            surfaceFieldValue;
-        libs            (fieldFunctionObjects);
-
-        log             true;
-        writeControl    timeStep;
-        writeInterval   5;
-
-        writeFields     false;
-        surfaceFormat   none;
-
-        regionType      patch;
-        name            outlet;
-
-        operation       sum;
-        fields          (phi);
-    }
-}
 
 // ************************************************************************* //

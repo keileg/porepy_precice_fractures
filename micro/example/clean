@@ -8,7 +8,7 @@ for d in [0-9]*; do
     [[ "$d" == "0" ]] && continue
 
     # Remove numeric timestep folders such as 0.1, 10, 250, 1e-05
-    if [[ "$d" =~ '^[0-9]+([.][0-9]+)?([eE][-+]?[0-9]+)?$' ]]; then
+    if [[ "$d" =~ "^[0-9]+([.][0-9]+)?([eE][-+]?[0-9]+)?$" ]]; then
         rm -rf -- "$d"
     fi
 done
