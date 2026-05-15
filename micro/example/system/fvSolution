@@ -19,17 +19,29 @@ solvers
     p
     {
         solver          GAMG;
-        tolerance       1e-06;
-        relTol          0.1;
-        smoother        GaussSeidel;
+        smoother        DIC;
+        tolerance       1e-7;
+        relTol          0.05;
     }
 
-    "(U|k|epsilon|omega|f|v2)"
+    "(U|sigma)"
     {
         solver          smoothSolver;
         smoother        symGaussSeidel;
-        tolerance       1e-05;
+        tolerance       1e-7;
         relTol          0.1;
+    }
+
+    pFinal
+    {
+        $p;
+        relTol          0;
+    }
+
+    "(U|sigma)Final"
+    {
+        $U;
+        relTol          0;
     }
 }
 
@@ -37,12 +49,13 @@ SIMPLE
 {
     nNonOrthogonalCorrectors 0;
     consistent      yes;
+    pRefCell   0;
+    pRefValue  0;
 
     residualControl
     {
-        p               1e-2;
-        U               1e-3;
-        "(k|epsilon|omega|f|v2)" 1e-3;
+        p               1e-6;
+        U               1e-6;
     }
 }
 
@@ -50,8 +63,7 @@ relaxationFactors
 {
     equations
     {
-        U               0.9; // 0.9 is more stable but 0.95 more convergent
-        ".*"            0.9; // 0.9 is more stable but 0.95 more convergent
+        U               0.7;
     }
 }
 

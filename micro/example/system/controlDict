@@ -22,13 +22,13 @@ startTime       0;
 
 stopAt          endTime;
 
-endTime         1;
+endTime         5000;
 
-deltaT          0.1;
+deltaT          1;
 
 writeControl    timeStep;
 
-writeInterval   5;
+writeInterval   1000;
 
 purgeWrite      0;
 
@@ -46,23 +46,23 @@ runTimeModifiable true;
 
 functions
 {
-    outletFlux
+    outletAverageVelocity
     {
-        type            surfaceFieldValue;
-        libs            (fieldFunctionObjects);
+	 type            surfaceFieldValue;
+   	 libs            (fieldFunctionObjects);
 
-        log             true;
-        writeControl    timeStep;
-        writeInterval   5;
+   	 log             true;
+   	 writeControl    timeStep;
+   	 writeInterval   1000;
 
-        writeFields     false;
-        surfaceFormat   none;
+   	 writeFields     false;
+   	 surfaceFormat   none;
 
-        regionType      patch;
-        name            outlet;
+   	 regionType      patch;
+   	 name            outlet;
 
-        operation       sum;
-        fields          (phi);
+   	 operation       areaAverage;
+   	 fields          (U);
     }
 }
 
