@@ -47,7 +47,7 @@ class MicroSimulation():
         perturbed_flux = flux * (self._sim_id / 16 + 0.5)
         fc.clean(check=True)
 
-        return {"flux": perturbed_flux}
+        return {"flux": flux}
 
     def set_state(self, state):
         self._root_path = copy(state[0])

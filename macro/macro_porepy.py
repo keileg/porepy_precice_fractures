@@ -4,7 +4,6 @@ import porepy as pp
 import numpy as np
 import precice
 from porepy.models.fluid_mass_balance import SinglePhaseFlow, BoundaryConditionsSinglePhaseFlow, FluidMassBalanceEquations
-
 from porepy.applications.md_grids.domains import nd_cube_domain
 
 
@@ -44,11 +43,11 @@ class ModifiedBC(BoundaryConditionsSinglePhaseFlow):
         return bc
 
     def bc_values_pressure(self, bg: pp.BoundaryGrid) -> np.ndarray:
-        """Zero bc value on top and bottom, 5 on west side, 2 on east side."""
+        """Zero bc value on top and bottom, p_l on west side, p_r on east side."""
         domain_sides = self.domain_boundary_sides(bg)
         values = np.zeros(bg.num_cells)
         # See section on scaling for explanation of the conversion.
-        values[domain_sides.west] = self.units.convert_units(5, "Pa")
+        values[domain_sides.west] = self.units.convert_units(3, "Pa")
         values[domain_sides.east] = self.units.convert_units(2, "Pa")
         return values
 
@@ -163,6 +162,8 @@ def get_pressure_diff(
     fc = sd.cell_faces.tocsr()
 
     dp = np.zeros(internal_faces.size)
+    dist = np.zeros(internal_faces.size)
+    grad = np.zeros(internal_faces.size)
 
     for i, f in enumerate(internal_faces):
         start = fc.indptr[f]
@@ -176,14 +177,18 @@ def get_pressure_diff(
 
         # Orientation-dependent jump.
         dp[i] = signs[0] * p[cells[0]] + signs[1] * p[cells[1]]
+        
+        x0 = sd.cell_centers[:, cells[0]]
+        x1 = sd.cell_centers[:, cells[1]]
+        dist[i] = np.linalg.norm(x1 - x0)
+        
+        grad[i] = dp[i] / dist[i]
 
-    return dp
+    return grad
 
-fluid_constants = pp.FluidComponent(viscosity=0.1, density=0.2)
-solid_constants = pp.SolidConstants(permeability=0.5, porosity=0.25)
-material_constants = {"fluid": fluid_constants, "solid": solid_constants}
+fluid_constants = pp.FluidComponent(viscosity=1.0e-3, density=1000.0) #mu(Pa * second)(kg/m^3) for H2O
+material_constants = {"fluid": fluid_constants}
 model_params = {"material_constants": material_constants}
-solver_params = {}
 # time_manager = pp.TimeManager(
 #     schedule=[0, 3e-1],
 #     dt_init=1e-1,
@@ -220,9 +225,6 @@ while participant.is_coupling_ongoing():
     if (participant.requires_writing_checkpoint()):
         pass
     dt = participant.get_max_time_step_size()
-    # dt = model.time_manager.compute_time_step()
-    # model.time_manager.increase_time()
-    # model.time_manager.increase_time_index()
 
     read_flux = participant.read_data("Macro-Mesh", "flux", vertex_ids, dt)
     print("read flux", read_flux)
@@ -243,8 +245,6 @@ while participant.is_coupling_ongoing():
     participant.advance(dt)
     
     if (participant.requires_reading_checkpoint()):
-        # model.time_manager.time -= dt
-        # model.time_manager.time:index -= 1
         pass
     else:
         model.update_time_step_solution()  
