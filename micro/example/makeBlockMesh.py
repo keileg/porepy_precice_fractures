@@ -6,7 +6,7 @@ import numpy as np
 import argparse
 
 def meshFor(nx:int, amplitude:float, waves:int, aperture:float, shift:float):
-    l, r = 0.0, 1.0
+    l, r = 0.0, 0.01
     t, b = aperture, 0.0
 
     xs = np.linspace(l, r, nx)
@@ -32,7 +32,7 @@ def meshFor(nx:int, amplitude:float, waves:int, aperture:float, shift:float):
 
     # create base face and extrude to a hex
     face = Face(points, edges)
-    block = Extrude(face, amount=[0, 0, 0.1])
+    block = Extrude(face, amount=[0, 0, 0.005])
 
     # set patches
     block.set_patch("left", "inlet")

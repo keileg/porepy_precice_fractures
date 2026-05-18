@@ -28,9 +28,9 @@ deltaT          1;
 
 writeControl    timeStep;
 
-writeInterval   1000;
+writeInterval   1;
 
-purgeWrite      0;
+purgeWrite      10;
 
 writeFormat     ascii;
 
@@ -48,21 +48,57 @@ functions
 {
     outletAverageVelocity
     {
-	 type            surfaceFieldValue;
-   	 libs            (fieldFunctionObjects);
+        type            surfaceFieldValue;
+        libs            (fieldFunctionObjects);
 
-   	 log             true;
-   	 writeControl    timeStep;
-   	 writeInterval   1000;
+        log             true;
+        writeControl    timeStep;
+        writeInterval   10;
 
-   	 writeFields     false;
-   	 surfaceFormat   none;
+        writeFields     false;
+        surfaceFormat   none;
 
-   	 regionType      patch;
-   	 name            outlet;
+        regionType      patch;
+        name            outlet;
 
-   	 operation       areaNormalAverage;
-   	 fields          (U);
+        operation       areaNormalAverage;
+        fields          (U);
+    }
+	outletMaxVelocity
+    {
+        type            surfaceFieldValue;
+        libs            (fieldFunctionObjects);
+
+        log             true;
+        writeControl    timeStep;
+        writeInterval   10;
+
+        writeFields     false;
+        surfaceFormat   none;
+
+        regionType      patch;
+        name            outlet;
+
+        operation       max;
+        fields          (U);
+    }
+	stopOnUxResidual
+    {
+        type            runTimeControl;
+        libs            ("libutilityFunctionObjects.so");
+
+        conditions
+        {
+            UxConverged
+            {
+                type            equationInitialResidual;
+                fields          (U.component(0));
+                value           1e-6;
+                mode            minimum;
+            }
+        }
+
+        satisfiedAction end;
     }
 }
 
