@@ -61,7 +61,7 @@ functions
    	 regionType      patch;
    	 name            outlet;
 
-   	 operation       areaAverage;
+   	 operation       areaNormalAverage;
    	 fields          (U);
     }
 }
