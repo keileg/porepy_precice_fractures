@@ -7,6 +7,7 @@ from porepy.models.fluid_mass_balance import SinglePhaseFlow, BoundaryConditions
 from porepy.applications.md_grids.domains import nd_cube_domain
 
 
+h = 0.25
 
 class ModifiedGeometry:
     def set_domain(self) -> None:
@@ -30,7 +31,7 @@ class ModifiedGeometry:
         Here we determine the cell size.
 
         """
-        cell_size = self.units.convert_units(0.25, "m")
+        cell_size = self.units.convert_units(h, "m")
         mesh_args: dict[str, float] = {"cell_size": cell_size}
         return mesh_args
 
@@ -47,51 +48,15 @@ class ModifiedBC(BoundaryConditionsSinglePhaseFlow):
         domain_sides = self.domain_boundary_sides(bg)
         values = np.zeros(bg.num_cells)
         # See section on scaling for explanation of the conversion.
-        values[domain_sides.west] = self.units.convert_units(3, "Pa")
-        values[domain_sides.east] = self.units.convert_units(2, "Pa")
+        values[domain_sides.west] = self.units.convert_units(0.001, "Pa")
+        values[domain_sides.east] = self.units.convert_units(0, "Pa")
         return values
 
-
-# class ModifiedFlux(FluidMassBalanceEquations):
-#     def fluid_flux(self, domains: pp.SubdomainsOrBoundaries) -> pp.ad.Operator:
-#         if len(domains) == 0 or all(isinstance(d, pp.BoundaryGrid) for d in domains):
-#             return self.create_boundary_operator(
-#                 name=self.bc_data_fluid_flux_key,
-#                 domains=cast(Sequence[pp.BoundaryGrid], domains),
-#             )
-#
-#         # Verify that the domains are subdomains.
-#         if not all(isinstance(d, pp.Grid) for d in domains):
-#             raise ValueError("domains must consist entirely of subdomains.")
-#         # Now we can cast the domains
-#         domains = cast(list[pp.Grid], domains)
-#
-#         flux = self.advective_flux(
-#             domains,
-#             self.advection_weight_mass_balance(domains),
-#             self.mobility_discretization(domains),
-#             self.boundary_fluid_flux(domains)
-#         )
-#         flux.set_name("fluid_flux")
-#         return flux
-#
 class ModifiedDarcyFlux:
-    def darcy_flux(self, domains: pp.SubdomainsOrBoundaries) -> pp.ad.Operator:
-        if len(domains) == 0 or all([isinstance(g, pp.BoundaryGrid) for g in domains]):
-            # Note: in case of the empty subdomain list, the time dependent array is
-            # still returned. Otherwise, this method produces an infinite recursion
-            # loop. It does not affect real computations anyhow.
-            return self.create_boundary_operator(
-                name=self.bc_data_darcy_flux_key,
-                domains=cast(Sequence[pp.BoundaryGrid], domains),
-            )# Check that the domains are grids.
-        if not all([isinstance(g, pp.Grid) for g in domains]):
-            raise ValueError(
-                """Argument `domains` should either be a list of grids or a list of
-                boundary grids."""
-            )
-        # By now we know that subdomains is a list of grids, so we can cast it as such
-        # (in the typing sense).
+    def porepy_darcy_flux(
+        self,
+        domains: pp.SubdomainsOrBoundaries,
+    ) -> pp.ad.Operator:
         domains = cast(list[pp.Grid], domains)
 
         interfaces: list[pp.MortarGrid] = self.subdomains_to_interfaces(domains, [1])
@@ -101,21 +66,42 @@ class ModifiedDarcyFlux:
             subdomains=domains
         )
 
-        discr: Union[pp.ad.TpfaAd, pp.ad.MpfaAd] = self.darcy_flux_discretization(
-            domains
-        )
-        
+        discr: Union[pp.ad.TpfaAd, pp.ad.MpfaAd] = self.darcy_flux_discretization(domains)
+
         flux: pp.ad.Operator = (
-            discr.flux() @ self.pressure(domains) # use pp.ad.Scalar(0) instead
-            + self.internal_flux()
+            discr.flux() @ self.pressure(domains)
             + discr.bound_flux()
             @ (
                 boundary_operator
                 + intf_projection.mortar_to_primary_int()
                 @ self.interface_darcy_flux(interfaces)
             )
-            + discr.vector_source() @ self.vector_source_darcy_flux(domains)
+            + discr.vector_source()
+            @ self.vector_source_darcy_flux(domains)
         )
+        flux.set_name("PorePy_Darcy_flux")
+        return flux
+
+    def darcy_flux(
+        self,
+        domains: pp.SubdomainsOrBoundaries,
+    ) -> pp.ad.Operator:
+        if len(domains) == 0 or all(
+            isinstance(g, pp.BoundaryGrid) for g in domains
+        ):
+            return self.create_boundary_operator(
+                name=self.bc_data_darcy_flux_key,
+                domains=cast(Sequence[pp.BoundaryGrid], domains),
+            )
+
+        if not all(isinstance(g, pp.Grid) for g in domains):
+            raise ValueError(
+                "domains should either be grids or boundary grids."
+            )
+
+        domains = cast(list[pp.Grid], domains)
+
+        flux = self.porepy_darcy_flux(domains) + self.internal_flux()
         flux.set_name("Darcy_flux")
         return flux
 
@@ -126,10 +112,6 @@ class ModifiedDarcyFlux:
 class ModifiedSolver():
     def _is_nonlinear_problem(self) -> bool:
         return False
-# class ModifiedTimeManager(TimeManager):
-#     def compute_time_step(self):
-#         dt = participant.get_max_time_step_size()
-#         return dt
 
 class SinglePhaseFlowGeometry(
     ModifiedGeometry,
@@ -186,16 +168,10 @@ def get_pressure_diff(
 
     return grad
 
+solid_constants = pp.SolidConstants(permeability=0.833687/h)
 fluid_constants = pp.FluidComponent(viscosity=1.0e-3, density=1000.0) #mu(Pa * second)(kg/m^3) for H2O
-material_constants = {"fluid": fluid_constants}
+material_constants = {"fluid": fluid_constants, "solid":solid_constants}
 model_params = {"material_constants": material_constants}
-# time_manager = pp.TimeManager(
-#     schedule=[0, 3e-1],
-#     dt_init=1e-1,
-#     constant_dt=True,
-#     iter_max=10,
-#     print_info=True,
-# )
 
 model = SinglePhaseFlowGeometry(model_params)
 model.prepare_simulation()
@@ -228,7 +204,10 @@ while participant.is_coupling_ongoing():
 
     read_flux = participant.read_data("Macro-Mesh", "flux", vertex_ids, dt)
     print("read flux", read_flux)
-    q_full = full_face_flux_from_internal_faces(sd=sd, internal_faces=internal_faces,    read_flux=read_flux)
+    q_darcy = model.equation_system.evaluate(model.porepy_darcy_flux([sd]))[internal_faces]
+    read_flux = read_flux - q_darcy
+    print("compute flux correction", read_flux)
+    q_full = full_face_flux_from_internal_faces(sd=sd, internal_faces=internal_faces, read_flux=read_flux)
     pp.set_solution_values(name = "read_flux", values = q_full, data = model.mdg.subdomain_data(sd), iterate_index = 0)
     
     op = pp.ad.TimeDependentDenseArray(name="read_flux", domains=[sd])
@@ -242,6 +221,10 @@ while participant.is_coupling_ongoing():
     print("pressure diff", pressure_diff)
     participant.write_data("Macro-Mesh", "pressure-difference", vertex_ids, pressure_diff)
 
+    # prepare aperture for each vertex according to the x-coord
+    aperture = [ 0.1/(x/h) for x, _ in coords ]
+    participant.write_data("Macro-Mesh", "aperture", vertex_ids, aperture)
+
     participant.advance(dt)
     
     if (participant.requires_reading_checkpoint()):
@@ -250,7 +233,4 @@ while participant.is_coupling_ongoing():
         model.update_time_step_solution()  
         pp.plot_grid(model.mdg, "pressure", figsize=(10, 8), plot_2d=True)
 
-participant.finalize() 
-
-
-
+participant.finalize()
