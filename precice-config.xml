@@ -6,21 +6,25 @@
 
   <data:scalar name="pressure-difference"/>
   <data:scalar name="flux"/>
+  <data:scalar name="aperture"/>
 
   <mesh name="Macro-Mesh" dimensions="2">
     <use-data name="pressure-difference"/>
     <use-data name="flux"/>
+    <use-data name="aperture"/>
   </mesh>
 
   <participant name="Macro">
     <provide-mesh name="Macro-Mesh"/>
     <write-data name="pressure-difference" mesh="Macro-Mesh"/>
+    <write-data name="aperture" mesh="Macro-Mesh"/>
     <read-data name="flux" mesh="Macro-Mesh"/>
   </participant>
 
   <participant name="Micro-Manager">
     <receive-mesh name="Macro-Mesh" from="Macro" api-access="true" safety-factor="0"/>
     <read-data name="pressure-difference" mesh="Macro-Mesh"/>
+    <read-data name="aperture" mesh="Macro-Mesh"/>
     <write-data name="flux" mesh="Macro-Mesh"/>
   </participant>
 
@@ -35,6 +39,7 @@
     <max-iterations value="15" />
     <exchange data="pressure-difference" mesh="Macro-Mesh" from="Macro" to="Micro-Manager"/>
     <exchange data="flux" mesh="Macro-Mesh" from="Micro-Manager" to="Macro"/>
-    <relative-convergence-measure data="pressure-difference" mesh="Macro-Mesh" limit="1e-7"/>
+    <exchange data="aperture" mesh="Macro-Mesh" from="Macro" to="Micro-Manager"/>
+    <relative-convergence-measure data="pressure-difference" mesh="Macro-Mesh" limit="1e-5"/>
   </coupling-scheme:serial-implicit>
 </precice-configuration>

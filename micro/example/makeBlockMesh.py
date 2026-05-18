@@ -51,13 +51,12 @@ def meshFor(nx:int, amplitude:float, waves:int, aperture:float, shift:float):
     mesh.modify_patch("lowerWall", "wall")
 
     # flow direction
-    block.chop(0, count=100)
+    block.chop(0, count=50)
     # top-bottom (wall)
-    block.chop(1, length_ratio=0.25, count=4)
-    block.chop(1, length_ratio=0.50, count=4)
-    block.chop(1, length_ratio=0.25, count=4)
+    block.chop(1, total_expansion=10, count=30)
+    block.chop(1, total_expansion=0.1, count=30)
     # back-front (empty)
-    block.chop(2, count=10)
+    block.chop(2, count=1)
 
     return mesh
 
