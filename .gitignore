@@ -7,6 +7,7 @@ out
 *.vtu
 *.pvd
 *.series
+*.msh
 
 # preCICE
 precice-profiling/
@@ -51,3 +52,4 @@ dynamicCode
 
 # micro sim
 micro-runs/
+validation_laminar_channel/
