@@ -22,13 +22,14 @@ class MicroSimulation():
 
     def solve(self, macro_data, dt):
         dp = macro_data["pressure-difference"]
-        dp_input = dp/1000.0 # convert to kinetic pressure
+        dp_input = dp * 0.01 / 1000.0 # compute dp from gradient, then convert to kinetic pressure
         
-        if abs(dp) < 1e-10:
+        if abs(dp) < 1e-15:
             return {"flux": 0.0}
             
         fc = FoamCase(self._root_path)
-        mesh.meshFor(nx=10,amplitude=0,waves=1,aperture=macro_data["aperture"],shift=0).write(self._root_path + "/system/blockMeshDict")
+        thickness=macro_data["aperture"]
+        mesh.meshFor(nx=10,amplitude=0,waves=1,aperture=thickness,shift=0).write(self._root_path + "/system/blockMeshDict")
 
         with fc[0]["p"] as f:
             f.dimensions = DimensionSet(length=2, time=-2)
@@ -46,7 +47,9 @@ class MicroSimulation():
         file = functionobject(file_name="surfaceFieldValue.dat", folder="outletAverageVelocity")
         fluxes = load_tables(source=file, dir_name=self._root_path)
         flux = fluxes.iloc[-1]["areaNormalAverage(U)"]
-        print("flux on sim ", self._sim_id, " flux", flux)
+        flux_ana = dp * thickness * thickness / (12.0 * 1e-3)
+        diff = abs(flux_ana-flux)
+        print("=====flux on sim ", self._sim_id, "with p_in ", dp_input, " flux", flux, "with diff ", diff, "===")
         fc.clean(check=True)
 
         return {"flux": flux}
