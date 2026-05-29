@@ -110,12 +110,25 @@ def make_stl_from_top_bot(X, Y, Top, Bot, filename: Path):
 SEED = 42
 
 def makeFracture(aperture = 1, roughness = 0.5, shear = 0):
-    fracture = SimFrac(h=1, lx=10, ly=10, shear=shear, method="spectral", units="mm")
+    # We need to use mm. Using m leads to div by zero
+    x, y = 10, 5
+    fracture = SimFrac(h=1, lx=x, ly=y, shear=shear, method="spectral", units="mm")
     fracture.params["seed"]["value"] = SEED
     fracture.params["mean-aperture"]["value"] = aperture
     fracture.params["roughness"]["value"] = roughness
     fracture.create_fracture()
-    return fracture.X, fracture.Y, fracture.top, fracture.bottom
+
+    # move X and Y to 0 origin
+    # transform mm to m to be consistent with openfoam
+    X = (fracture.X - fracture.X.min()) / 1000
+    Y = (fracture.Y - fracture.Y.min()) / 1000
+    top = fracture.top / 1000
+    bottom = fracture.bottom / 1000
+
+    print(f"X {X.min()} {X.max()}")
+    print(f"Y {Y.min()} {Y.max()}")
+
+    return X, Y, top, bottom
 
 def fractureSTL(output: Path, **kwargs):
     x, y, t, b = makeFracture(**kwargs)
