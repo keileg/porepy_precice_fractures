@@ -33,7 +33,8 @@ def write_ascii_stl(filename, region_triangles):
 
     Each triangle is three 3D numpy arrays or array-like points.
     """
-
+ 
+    print(f"Writing to {filename.absolute()}")
     with filename.open("w") as f:
         for region, triangles in region_triangles.items():
             f.write(f"solid {region}\n")
@@ -67,12 +68,11 @@ def make_stl_from_top_bot(X, Y, Top, Bot, filename: Path):
     B = np.dstack((X, Y, Bot))
 
     regions = {
-        "top": [],
-        "bot": [],
+        "upperWall": [],
+        "lowerWall": [],
         "inlet": [],
         "outlet": [],
-        "ymin": [],
-        "ymax": [],
+        "frontAndBack": [],
     }
 
     def add_quad(region, p00, p10, p11, p01):
@@ -82,8 +82,8 @@ def make_stl_from_top_bot(X, Y, Top, Bot, filename: Path):
     # Top and bottom surfaces
     for j in range(ny - 1):
         for i in range(nx - 1):
-            add_quad("top", T[j, i], T[j, i + 1], T[j + 1, i + 1], T[j + 1, i])
-            add_quad("bot", B[j, i], B[j + 1, i], B[j + 1, i + 1], B[j, i + 1])
+            add_quad("upperWall", T[j, i], T[j, i + 1], T[j + 1, i + 1], T[j + 1, i])
+            add_quad("lowerWall", B[j, i], B[j + 1, i], B[j + 1, i + 1], B[j, i + 1])
 
     # x-min side: inlet
     i = 0
@@ -98,12 +98,12 @@ def make_stl_from_top_bot(X, Y, Top, Bot, filename: Path):
     # y-min side: empty
     j = 0
     for i in range(nx - 1):
-        add_quad("ymin", B[j, i], B[j, i + 1], T[j, i + 1], T[j, i])
+        add_quad("frontAndBack", B[j, i], B[j, i + 1], T[j, i + 1], T[j, i])
 
     # y-max side: empty
     j = ny - 1
     for i in range(nx - 1):
-        add_quad("ymax", B[j, i], T[j, i], T[j, i + 1], B[j, i + 1])
+        add_quad("frontAndBack", B[j, i], T[j, i], T[j, i + 1], B[j, i + 1])
 
     write_ascii_stl(filename, regions)
 
@@ -123,7 +123,7 @@ def fractureSTL(output: Path, **kwargs):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("output", type=Path, default=Path("fracture.stl"))
+    parser.add_argument("--output", type=Path, default=Path("constant/triSurface/fracture.stl"))
     parser.add_argument("--aperture", type=float, default=1.0)
     parser.add_argument("--roughness", type=float, default=0.5)
     parser.add_argument("--shear", type=float, default=0.0)
