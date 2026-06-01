@@ -18,7 +18,7 @@ FoamFile
 
 
 castellatedMesh true;
-snap false;
+snap true;
 addLayers false;
 mergeTolerance 1e-06;
 debug 1;
@@ -95,4 +95,7 @@ meshQualityControls {
   minFaceWeight 0.05;
   minVolRatio 0.01;
   minTriangleTwist -1;
+
+  nSmoothScale 4;
+  errorReduction 0.75;
   }
