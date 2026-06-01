@@ -52,6 +52,9 @@ def make_stl_from_top_bot(X, Y, Top, Bot, filename: Path):
     T = np.dstack((X, Y, Top))
     B = np.dstack((X, Y, Bot))
 
+    midpoint = (T[ny//2, nx//2] + B[ny//2, nx//2])/2
+    print(f"Midpoint {midpoint}")
+
     regions = {
         "top": [],
         "bottom": [],
