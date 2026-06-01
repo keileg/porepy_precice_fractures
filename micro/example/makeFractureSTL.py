@@ -149,4 +149,4 @@ if __name__ == "__main__":
 
     x, y, t, b = makeFracture(aperture=args.aperture, shear=args.shear, disc=args.disc, roughness=args.roughness)
     make_stl_from_top_bot(x, y, t, b, args.case / "constant/triSurface/fracture.stl")
-    make_background_from_top_bot(x, y, t, b, args.case / "system/blockMesh")
+    make_background_from_top_bot(x, y, t, b, args.case / "system/blockMeshDict")
