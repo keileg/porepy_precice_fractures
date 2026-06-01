@@ -9,6 +9,7 @@
 import numpy as np
 from pysimfrac import SimFrac
 from pathlib import Path
+import classy_blocks as cb
 import argparse
 
 def normal(a, b, c):
@@ -108,17 +109,44 @@ def makeFracture(aperture = 1, roughness = 0.5, shear = 0, disc = 1.0):
 
     return X, Y, top, bottom
 
-def fractureSTL(output: Path, **kwargs):
-    x, y, t, b = makeFracture(**kwargs)
-    make_stl_from_top_bot(x, y, t, b, output)
+def make_background_from_top_bot(X, Y, Top, Bot, filename: Path):
+    X = np.asarray(X)
+    Y = np.asarray(Y)
+    Top = np.asarray(Top)
+    Bot = np.asarray(Bot)
+
+    if X.shape != Y.shape or X.shape != Top.shape or X.shape != Bot.shape:
+        raise ValueError("X, Y, Top, and Bot must have the same shape")
+
+    xmin, xmax = X.min(), X.max()
+    ymin, ymax = Y.min(), Y.max()
+    zmin, zmax = Bot.min(), Top.max()
+
+    minp = [xmin, ymin, zmin]
+    maxp = [xmax, ymax, zmax]
+
+    print(f"{minp=}")
+    print(f"{maxp=}")
+
+    mesh = cb.Mesh()
+    box = cb.Box(minp, maxp)
+    box.chop(0, count=100)
+    box.chop(1, count=50)
+    box.chop(2, count=(zmax-zmin)*1000)
+    mesh.add(box)
+
+    print(f"Writing background mesh to {filename.absolute()}")
+    mesh.write(filename, debug_path="debugbg.vtk")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output", type=Path, default=Path("constant/triSurface/fracture.stl"))
+    parser.add_argument("--case", type=Path, default=Path(__file__).parent)
     parser.add_argument("--aperture", type=float, default=1.0)
     parser.add_argument("--roughness", type=float, default=0.5)
     parser.add_argument("--shear", type=float, default=0.0)
     parser.add_argument("--disc", type=float, default=1.0)
     args = parser.parse_args()
 
-    fractureSTL(**vars(args))
+    x, y, t, b = makeFracture(aperture=args.aperture, shear=args.shear, disc=args.disc, roughness=args.roughness)
+    make_stl_from_top_bot(x, y, t, b, args.case / "constant/triSurface/fracture.stl")
+    make_background_from_top_bot(x, y, t, b, args.case / "system/blockMesh")
