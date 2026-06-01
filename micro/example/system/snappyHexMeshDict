@@ -57,7 +57,7 @@ castellatedMeshControls {
   {
     fracture.stl
     {
-      level (1 2);
+      level (1 3);
     }
   }
   refinementRegions {}
