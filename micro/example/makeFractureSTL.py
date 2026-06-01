@@ -127,6 +127,7 @@ def makeFracture(aperture = 1, roughness = 0.5, shear = 0):
 
     print(f"X {X.min()} {X.max()}")
     print(f"Y {Y.min()} {Y.max()}")
+    print(f"Z {bottom.min()} {top.max()}")
 
     return X, Y, top, bottom
 
