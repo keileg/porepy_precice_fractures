@@ -128,14 +128,11 @@ def make_background_from_top_bot(X, Y, Top, Bot, filename: Path):
     minp = [xmin, ymin, zmin]
     maxp = [xmax, ymax, zmax]
 
-    print(f"{minp=}")
-    print(f"{maxp=}")
-
     mesh = cb.Mesh()
     box = cb.Box(minp, maxp)
     box.chop(0, count=100)
     box.chop(1, count=50)
-    box.chop(2, count=(zmax-zmin)*1000)
+    box.chop(2, count=(zmax-zmin)*1000*10)
     mesh.add(box)
 
     print(f"Writing background mesh to {filename.absolute()}")
