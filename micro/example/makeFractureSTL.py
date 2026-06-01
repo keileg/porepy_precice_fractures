@@ -18,22 +18,6 @@ def normal(a, b, c):
 
 
 def write_ascii_stl(filename, region_triangles):
-    """
-    Write an ASCII STL with named regions.
-
-    region_triangles is a dict:
-        {
-            "top":    [(a, b, c), ...],
-            "bot":    [(a, b, c), ...],
-            "inlet":  [(a, b, c), ...],
-            "outlet": [(a, b, c), ...],
-            "ymin":   [(a, b, c), ...],
-            "ymax":   [(a, b, c), ...],
-        }
-
-    Each triangle is three 3D numpy arrays or array-like points.
-    """
- 
     print(f"Writing to {filename.absolute()}")
     with filename.open("w") as f:
         for region, triangles in region_triangles.items():
