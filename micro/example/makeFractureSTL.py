@@ -71,24 +71,16 @@ def make_stl_from_top_bot(X, Y, Top, Bot, filename: Path):
             add_quad("bottom", B[j, i], B[j + 1, i], B[j + 1, i + 1], B[j, i + 1])
 
     # x-min side: inlet
-    i = 0
+    ileft, iright = 0, nx - 1
     for j in range(ny - 1):
-        add_quad("left", B[j, i], T[j, i], T[j + 1, i], B[j + 1, i])
-
-    # x-max side: outlet
-    i = nx - 1
-    for j in range(ny - 1):
-        add_quad("right", B[j, i], B[j + 1, i], T[j + 1, i], T[j, i])
+        add_quad("left", B[j, ileft], T[j, ileft], T[j + 1, ileft], B[j + 1, ileft])
+        add_quad("right", B[j, iright], B[j + 1, iright], T[j + 1, iright], T[j, iright])
 
     # y-min side: empty
-    j = 0
+    jfront, jback = 0, ny - 1
     for i in range(nx - 1):
-        add_quad("front", B[j, i], B[j, i + 1], T[j, i + 1], T[j, i])
-
-    # y-max side: empty
-    j = ny - 1
-    for i in range(nx - 1):
-        add_quad("back", B[j, i], T[j, i], T[j, i + 1], B[j, i + 1])
+        add_quad("front", B[jfront, i], B[jfront, i + 1], T[jfront, i + 1], T[jfront, i])
+        add_quad("back", B[jback, i], T[jback, i], T[jback, i + 1], B[jback, i + 1])
 
     write_ascii_stl(filename, regions)
 
