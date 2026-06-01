@@ -52,11 +52,12 @@ def make_stl_from_top_bot(X, Y, Top, Bot, filename: Path):
     B = np.dstack((X, Y, Bot))
 
     regions = {
-        "upperWall": [],
-        "lowerWall": [],
-        "inlet": [],
-        "outlet": [],
-        "frontAndBack": [],
+        "top": [],
+        "bottom": [],
+        "left": [],
+        "right": [],
+        "front": [],
+        "back": [],
     }
 
     def add_quad(region, p00, p10, p11, p01):
@@ -66,28 +67,28 @@ def make_stl_from_top_bot(X, Y, Top, Bot, filename: Path):
     # Top and bottom surfaces
     for j in range(ny - 1):
         for i in range(nx - 1):
-            add_quad("upperWall", T[j, i], T[j, i + 1], T[j + 1, i + 1], T[j + 1, i])
-            add_quad("lowerWall", B[j, i], B[j + 1, i], B[j + 1, i + 1], B[j, i + 1])
+            add_quad("top", T[j, i], T[j, i + 1], T[j + 1, i + 1], T[j + 1, i])
+            add_quad("bottom", B[j, i], B[j + 1, i], B[j + 1, i + 1], B[j, i + 1])
 
     # x-min side: inlet
     i = 0
     for j in range(ny - 1):
-        add_quad("inlet", B[j, i], T[j, i], T[j + 1, i], B[j + 1, i])
+        add_quad("left", B[j, i], T[j, i], T[j + 1, i], B[j + 1, i])
 
     # x-max side: outlet
     i = nx - 1
     for j in range(ny - 1):
-        add_quad("outlet", B[j, i], B[j + 1, i], T[j + 1, i], T[j, i])
+        add_quad("right", B[j, i], B[j + 1, i], T[j + 1, i], T[j, i])
 
     # y-min side: empty
     j = 0
     for i in range(nx - 1):
-        add_quad("frontAndBack", B[j, i], B[j, i + 1], T[j, i + 1], T[j, i])
+        add_quad("front", B[j, i], B[j, i + 1], T[j, i + 1], T[j, i])
 
     # y-max side: empty
     j = ny - 1
     for i in range(nx - 1):
-        add_quad("frontAndBack", B[j, i], T[j, i], T[j, i + 1], B[j, i + 1])
+        add_quad("back", B[j, i], T[j, i], T[j, i + 1], B[j, i + 1])
 
     write_ascii_stl(filename, regions)
 
