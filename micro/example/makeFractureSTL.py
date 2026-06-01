@@ -86,10 +86,10 @@ def make_stl_from_top_bot(X, Y, Top, Bot, filename: Path):
 
 SEED = 42
 
-def makeFracture(aperture = 1, roughness = 0.5, shear = 0, h = 1.0):
+def makeFracture(aperture = 1, roughness = 0.5, shear = 0, disc = 1.0):
     # We need to use mm. Using m leads to div by zero
     x, y = 10, 5
-    fracture = SimFrac(h=h, lx=x, ly=y, shear=shear, method="spectral", units="mm")
+    fracture = SimFrac(h=disc, lx=x, ly=y, shear=shear, method="spectral", units="mm")
     fracture.params["seed"]["value"] = SEED
     fracture.params["mean-aperture"]["value"] = aperture
     fracture.params["roughness"]["value"] = roughness
@@ -118,7 +118,7 @@ if __name__ == "__main__":
     parser.add_argument("--aperture", type=float, default=1.0)
     parser.add_argument("--roughness", type=float, default=0.5)
     parser.add_argument("--shear", type=float, default=0.0)
-    parser.add_argument("-h", type=float, default=1.0)
+    parser.add_argument("--disc", type=float, default=1.0)
     args = parser.parse_args()
 
     fractureSTL(**vars(args))
