@@ -186,9 +186,9 @@ while participant.is_coupling_ongoing():
 
     pressure = model.equation_system.evaluate(model.pressure([sd]))
     print("pressure", pressure)
-    pressure_diff = get_pressure_grad(sd, internal_faces, pressure)
-    print("pressure diff", pressure_diff)
-    participant.write_data("Macro-Mesh", "pressure-difference", vertex_ids, pressure_diff)
+    pressure_grad = get_pressure_grad(sd, internal_faces, pressure)
+    print("pressure gradient", pressure_grad)
+    participant.write_data("Macro-Mesh", "pressure-grad", vertex_ids, pressure_grad)
 
     # prepare aperture for each vertex according to the x-coord
     aperture = [ 0.1/(x/h) for x, _ in coords ]

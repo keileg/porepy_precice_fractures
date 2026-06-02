@@ -16,7 +16,7 @@ while participant.is_coupling_ongoing():
     dp = np.array([t + 1.0, t+1.1], dtype=float)
 
     flux = participant.read_data(mesh_name, "flux", vertex_ids, 0)
-    participant.write_data(mesh_name, "pressure-difference", vertex_ids, dp)
+    participant.write_data(mesh_name, "pressure-grad", vertex_ids, dp)
 
     print("read flux", flux)
 

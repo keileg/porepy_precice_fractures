@@ -82,7 +82,7 @@ while participant.is_coupling_ongoing():
     pressure = model.equation_system.evaluate(model.pressure([sd]))
     pressure_grad = get_pressure_grad(sd, coupling_faces, pressure)
     # print("pressure gradient", pressure_grad)
-    participant.write_data("Macro-Mesh", "pressure-difference", vertex_ids, pressure_grad)
+    participant.write_data("Macro-Mesh", "pressure-grad", vertex_ids, pressure_grad)
     participant.write_data("Macro-Mesh", "aperture", vertex_ids, aperture_cpl)
 
     participant.advance(dt)

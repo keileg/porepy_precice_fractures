@@ -18,10 +18,10 @@ class MicroSimulation():
         print(f"Sim {sim_id} created {self._root_path}")
 
     def initialize(self, initial_data=None):
-        return {"pressure-difference": 0.0}
+        return {"pressure-grad": 0.0}
 
     def solve(self, macro_data, dt):
-        dp = macro_data["pressure-difference"]
+        dp = macro_data["pressure-grad"]
         dp_input = dp * 0.01 / 1000.0 # compute dp from gradient, then convert to kinetic pressure
         
         if abs(dp) < 1e-15:
