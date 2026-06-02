@@ -130,7 +130,7 @@ def make_background_from_top_bot(X, Y, Top, Bot, filename: Path):
     mesh.add(box)
 
     print(f"Writing background mesh to {filename.absolute()}")
-    mesh.write(filename, debug_path="debugbg.vtk")
+    mesh.write(filename)
 
 def patch_midpoint(X, Y, T, B, filename: Path):
     assert X.shape == Y.shape and Y.shape == T.shape and T.shape == B.shape
