@@ -150,9 +150,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--case", type=Path, default=Path(__file__).parent)
     parser.add_argument("--aperture", type=float, default=1.0)
-    parser.add_argument("--roughness", type=float, default=0.5)
+    parser.add_argument("--roughness", type=float, default=0.3)
     parser.add_argument("--shear", type=float, default=0.0)
-    parser.add_argument("--disc", type=float, default=1.0)
+    parser.add_argument("--disc", type=float, default=0.25)
     args = parser.parse_args()
 
     x, y, t, b = makeFracture(aperture=args.aperture, shear=args.shear, disc=args.disc, roughness=args.roughness)
