@@ -46,9 +46,6 @@ def make_stl_from_top_bot(X, Y, Top, Bot, filename: Path):
     T = np.dstack((X, Y, Top))
     B = np.dstack((X, Y, Bot))
 
-    midpoint = (T[ny//2, nx//2] + B[ny//2, nx//2])/2
-    print(f"Midpoint {midpoint}")
-
     regions = {
         "top": [],
         "bottom": [],
@@ -100,6 +97,7 @@ def makeFracture(aperture = 1, roughness = 0.5, shear = 0, disc = 1.0):
     top = fracture.top / 1000
     bottom = fracture.bottom / 1000
 
+    print("Mesh AABB")
     print(f"X {X.min()} {X.max()}")
     print(f"Y {Y.min()} {Y.max()}")
     print(f"Z {bottom.min()} {top.max()}")
@@ -134,6 +132,20 @@ def make_background_from_top_bot(X, Y, Top, Bot, filename: Path):
     print(f"Writing background mesh to {filename.absolute()}")
     mesh.write(filename, debug_path="debugbg.vtk")
 
+def patch_midpoint(X, Y, T, B, filename: Path):
+    assert X.shape == Y.shape and Y.shape == T.shape and T.shape == B.shape
+    ny, nx = X.shape
+    T = np.dstack((X, Y, T))
+    B = np.dstack((X, Y, B))
+
+    midpoint = (T[ny//2, nx//2] + B[ny//2, nx//2])/2
+    print(f"Patching midpoint {midpoint} in {filename.absolute()}")
+
+    lines = [ line if "locationInMesh" not in line else f"  locationInMesh ({midpoint[0]} {midpoint[1]} {midpoint[2]});"
+            for line in filename.read_text().splitlines(keepends=False)]
+    filename.write_text("\n".join(lines))
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--case", type=Path, default=Path(__file__).parent)
@@ -146,3 +158,4 @@ if __name__ == "__main__":
     x, y, t, b = makeFracture(aperture=args.aperture, shear=args.shear, disc=args.disc, roughness=args.roughness)
     make_stl_from_top_bot(x, y, t, b, args.case / "constant/triSurface/fracture.stl")
     make_background_from_top_bot(x, y, t, b, args.case / "system/blockMeshDict")
+    patch_midpoint(x, y, t, b, args.case / "system/snappyHexMeshDict")
