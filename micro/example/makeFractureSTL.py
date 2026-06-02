@@ -1,10 +1,4 @@
-#!/usr/bin/env -S uv run --script
-#
-# /// script
-# requires-python = ">=3.12"
-# dependencies = ["pysimfrac @ git+https://github.com/lanl/pySimFrac.git","matplotlib"]
-# ///
-
+#!/usr/bin/env python3
 
 import numpy as np
 from pysimfrac import SimFrac
