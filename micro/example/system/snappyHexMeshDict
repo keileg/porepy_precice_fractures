@@ -19,7 +19,7 @@ FoamFile
 
 castellatedMesh true;
 snap true;
-addLayers false;
+addLayers true;
 mergeTolerance 1e-06;
 debug 1;
 
@@ -42,7 +42,7 @@ geometry
 
 
 castellatedMeshControls {
-  locationInMesh (0.00555556 0.0025 0.000329);
+  locationInMesh (0.005128205128205127 0.002631578947368421 2.2669699294568496e-05);
   maxLocalCells 1000000;
   maxGlobalCells 1000000;
   minRefinementCells 0;
@@ -76,7 +76,32 @@ snapControls{
   multiRegionFeatureSnap false;
   }
 
-addLayersControls{}
+addLayersControls{
+  relativeSizes true;
+  expansionRatio 1.2;
+  finalLayerThickness 0.00001;
+  minThickness 0.1;
+
+  layers
+  {
+    upperWall { nSurfaceLayers 5; }
+    lowerWall { nSurfaceLayers 5; }
+  }
+
+  nGrow 0;
+  featureAngle 130;
+  maxFaceThicknessRatio 0.5;
+  nSmoothSurfaceNormals 1;
+  nSmoothThickness 10;
+  minMedialAxisAngle 90;
+  maxThicknessToMedialRatio 0.3;
+  nSmoothNormals 3;
+  slipFeatureAngle 30;
+  nRelaxIter 5;
+  nBufferCellsNoExtrude 0;
+  nLayerIter 4;
+  nRelaxedIter 4;
+}
 
 meshQualityControls {
   maxNonOrtho 65;
@@ -84,7 +109,7 @@ meshQualityControls {
   maxInternalSkewness 4;
 
 
-  minVol 1e-13;
+  minVol -1e30;
   minTetQuality 1e-13;
 
   maxConcave 80;
