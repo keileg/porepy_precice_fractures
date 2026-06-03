@@ -71,8 +71,8 @@ snapControls{
   nRelaxIter 5;
   nFeatureSnapIter 3;
 
-  implicitFeatureSnap false;
-  explicitFeatureSnap true;
+  implicitFeatureSnap true;
+  explicitFeatureSnap false;
   multiRegionFeatureSnap false;
   }
 
@@ -80,7 +80,7 @@ addLayersControls{
   relativeSizes false;
   expansionRatio 1.2;
   finalLayerThickness 0.00001;
-  minThickness 0.1;
+  minThickness 1e-6;
 
   layers
   {
