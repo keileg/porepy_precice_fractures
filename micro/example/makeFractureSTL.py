@@ -70,11 +70,11 @@ def normal(a, b, c):
 
 
 def write_ascii_stl(filename, region_triangles):
-    print(f"Serializing")
+    print(f"Serializing to STL")
 
     f = io.StringIO()
     for region, triangles in region_triangles.items():
-        print(f"Region {region}")
+        print(f" Region {region}")
 
         f.write(f"solid {region}\n")
         f.writelines((
