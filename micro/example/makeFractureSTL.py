@@ -5,6 +5,62 @@ from pysimfrac import SimFrac
 from pathlib import Path
 import classy_blocks as cb
 import argparse
+import matplotlib.pyplot as plt
+
+def plot_spatial_frequency_psd(X, Y, Z, filename="psd.png"):
+    """
+    Plot radially averaged 2D power spectral density of surface Z.
+
+    X, Y, Z must have the same shape.
+    X and Y should be in physical units, e.g. mm or m.
+    Spatial frequency will be 1 / that unit.
+    """
+    X = np.asarray(X)
+    Y = np.asarray(Y)
+    Z = np.asarray(Z)
+
+    # Remove mean height before FFT
+    z = Z - np.mean(Z)
+
+    ny, nx = z.shape
+    dx = np.mean(np.diff(X[0, :]))
+    dy = np.mean(np.diff(Y[:, 0]))
+
+    fft_z = np.fft.fft2(z)
+    psd_2d = (np.abs(fft_z) ** 2) * dx * dy / (nx * ny)
+
+    fx = np.fft.fftfreq(nx, d=dx)
+    fy = np.fft.fftfreq(ny, d=dy)
+    FX, FY = np.meshgrid(fx, fy)
+    f = np.sqrt(FX**2 + FY**2)
+
+    # Flatten and remove zero frequency
+    f = f.ravel()
+    psd = psd_2d.ravel()
+
+    mask = f > 0
+    f = f[mask]
+    psd = psd[mask]
+
+    # Radial binning
+    bins = np.logspace(np.log10(f.min()), np.log10(f.max()), 50)
+    bin_centers = np.sqrt(bins[:-1] * bins[1:])
+    psd_radial = np.zeros(len(bin_centers))
+
+    for i in range(len(bin_centers)):
+        in_bin = (f >= bins[i]) & (f < bins[i + 1])
+        psd_radial[i] = np.mean(psd[in_bin]) if np.any(in_bin) else np.nan
+
+    valid = ~np.isnan(psd_radial)
+
+    fig, ax = plt.subplots()
+    ax.loglog(bin_centers[valid], psd_radial[valid], "o-")
+    ax.set_xlabel("Spatial frequency")
+    ax.set_ylabel("Power spectral density")
+    ax.grid(True, which="both")
+    fig.tight_layout()
+    fig.savefig(filename, dpi=300)
+    plt.close(fig)
 
 def normal(a, b, c):
     n = np.cross(b - a, c - a)
@@ -81,14 +137,21 @@ def make_stl_from_top_bot(X, Y, Top, Bot, filename: Path):
 
 SEED = 42
 
-def makeFracture(aperture = 1, roughness = 0.5, shear = 0, disc = 1.0):
+def makeFracture(aperture: float, roughness: float, shear: float, disc: float):
     # We need to use mm. Using m leads to div by zero
-    x, y = 10, 5
+    x, y = 200,200
     fracture = SimFrac(h=disc, lx=x, ly=y, shear=shear, method="spectral", units="mm")
     fracture.params["seed"]["value"] = SEED
     fracture.params["mean-aperture"]["value"] = aperture
     fracture.params["roughness"]["value"] = roughness
+    fracture.params["mismatch"]["value"] = 1
+    fracture.params["lambda_0"]["value"] = 1
+    fracture.params["H"]["value"] = 0.8 # common value for natural rock fracture
     fracture.create_fracture()
+
+    fracture.compute_moments()
+    fig,ax = fracture.plot_surface_pdf()
+    fig.savefig(fname="surface")
 
     # move X and Y to 0 origin
     # transform mm to m to be consistent with openfoam
@@ -97,10 +160,26 @@ def makeFracture(aperture = 1, roughness = 0.5, shear = 0, disc = 1.0):
     top = fracture.top / 1000
     bottom = fracture.bottom / 1000
 
+    midpoint = 0.5 * (top + bottom)
+    min_aperture = 1e-6
+    aperture = np.maximum(top - bottom, min_aperture)
+
+    top = midpoint + 0.5 * aperture
+    bottom = midpoint - 0.5 * aperture
+
+    assert((top > bottom).all())
+
     print("Mesh AABB")
     print(f"X {X.min()} {X.max()}")
     print(f"Y {Y.min()} {Y.max()}")
     print(f"Z {bottom.min()} {top.max()}")
+
+    plot_spatial_frequency_psd(
+        X,
+        Y,
+        top - bottom,
+        filename="aperture_psd.png",
+    )
 
     return X, Y, top, bottom
 
@@ -150,9 +229,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--case", type=Path, default=Path(__file__).parent)
     parser.add_argument("--aperture", type=float, default=1.0)
-    parser.add_argument("--roughness", type=float, default=0.2)
-    parser.add_argument("--shear", type=float, default=0.0)
-    parser.add_argument("--disc", type=float, default=0.25)
+    parser.add_argument("--roughness", type=float, default=3.0)
+    parser.add_argument("--shear", type=float, default=1)
+    parser.add_argument("--disc", type=float, default=1)
     args = parser.parse_args()
 
     x, y, t, b = makeFracture(aperture=args.aperture, shear=args.shear, disc=args.disc, roughness=args.roughness)

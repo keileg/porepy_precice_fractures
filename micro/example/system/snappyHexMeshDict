@@ -42,7 +42,7 @@ geometry
 
 
 castellatedMeshControls {
-  locationInMesh (0.005128205128205127 0.002631578947368421 1.5113132863045628e-05);
+  locationInMesh (0.10050251256281406 0.10050251256281406 0.0036076959403250914);
   maxLocalCells 1000000;
   maxGlobalCells 1000000;
   minRefinementCells 0;
