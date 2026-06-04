@@ -70,13 +70,20 @@ def normal(a, b, c):
 
 def write_ascii_stl(filename, region_triangles):
     print(f"Writing to {filename.absolute()}")
-    with filename.open("w") as f:
+    with filename.open("w", buffering=2**14) as f:
         for region, triangles in region_triangles.items():
+            print(f"Region {region}")
+
+            triangles = np.array(triangles, dtype=np.float32)  # shape: (N, 3, 3)
+            v1 = triangles[:, 1] - triangles[:, 0]
+            v2 = triangles[:, 2] - triangles[:, 0]
+            n = np.cross(v1, v2)
+            n /= np.linalg.norm(n, axis=1, keepdims=True)  # shape: (N, 3)
+            result = np.concatenate([n[:, np.newaxis, :], triangles], axis=1)
+
             f.write(f"solid {region}\n")
 
-            for a, b, c in triangles:
-                n = normal(a, b, c)
-
+            for a, b, c, n in result:
                 f.write(f"  facet normal {n[0]} {n[1]} {n[2]}\n")
                 f.write("    outer loop\n")
                 f.write(f"      vertex {a[0]} {a[1]} {a[2]}\n")
