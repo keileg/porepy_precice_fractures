@@ -14,6 +14,7 @@ class MicroSimulation():
         """
         self._sim_id = sim_id
         self._root_path = f"./micro-runs/micro-{sim_id}"
+        self._width = 0.005 # width of the channel
         FoamCase("./example").clone(self._root_path)
         print(f"Sim {sim_id} created {self._root_path}")
 
@@ -22,7 +23,7 @@ class MicroSimulation():
 
     def solve(self, macro_data, dt):
         dp = macro_data["pressure-grad"]
-        dp_input = dp * 0.01 / 1000.0 # compute dp from gradient, then convert to kinetic pressure
+        dp_input = abs(dp * 0.01 / 1000.0) # compute dp from gradient, then convert to kinetic pressure, force flow in positive direction
         
         if abs(dp) < 1e-15:
             return {"flux": 0.0}
@@ -44,15 +45,16 @@ class MicroSimulation():
 
         fc.run()
 
-        file = functionobject(file_name="surfaceFieldValue.dat", folder="outletAverageVelocity")
+        file = functionobject(file_name="surfaceFieldValue.dat", folder="outletFlowRate")
         fluxes = load_tables(source=file, dir_name=self._root_path)
-        flux = fluxes.iloc[-1]["areaNormalAverage(U)"]
-        flux_ana = dp * thickness * thickness / (12.0 * 1e-3)
-        diff = abs(flux_ana-flux)
-        print("=====flux on sim ", self._sim_id, "with p_in ", dp_input, " flux", flux, "with diff ", diff, "===")
+        flux = fluxes.iloc[-1]["sum(phi)"]  # m^3/s
+        flux_per_width = flux / self._width
+        flux_ana = dp * thickness * thickness / (12.0 * 1e-3) * thickness
+        diff = abs(flux_ana-flux_per_width)
+        print("=====flux on sim ", self._sim_id, "with p_in ", dp_input, " flux", flux_per_width, "with diff ", diff, "===")
         fc.clean(check=True)
 
-        return {"flux": flux}
+        return {"flux": flux_per_width}
 
     def set_state(self, state):
         self._root_path = copy(state[0])

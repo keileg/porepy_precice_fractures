@@ -13,7 +13,10 @@ from shared_coupling import (
     coupling_faces_and_coords,
     get_pressure_grad,
 )
-from shared_flux import CubicLawPermeabilityModified, LinearProblemMixin
+from shared_flux import (
+    FaceTransmissibilityFluxMixin,
+    LinearProblemMixin,
+)
 from shared_flow import TracerBC, TracerFluid, TracerIC, ModifiedGeometry
 
 H = 0.1
@@ -27,7 +30,8 @@ class SinglePhaseFlowGeometry(
     ComponentMassBalanceEquations,
     TracerIC,
     TracerBC,
-    CubicLawPermeabilityModified,
+    pp.constitutive_laws.CubicLawPermeability,
+    FaceTransmissibilityFluxMixin,
     LinearProblemMixin,
     SinglePhaseFlow,
 ):
@@ -45,7 +49,6 @@ model_params = {"material_constants": material_constants,
                     constant_dt=True,),
                 }
 model = SinglePhaseFlowGeometry(model_params)
-model.params["fracture_permeability"] = Aperture * Aperture / 12.0
 model.prepare_simulation()
 
 participant = precice.Participant("Macro", "../precice-config.xml", 0, 1)
@@ -54,6 +57,21 @@ sd = model.mdg.subdomains(dim=2)[0]
 coupling_faces, coords = coupling_faces_and_coords(sd)
 vertex_ids = participant.set_mesh_vertices("Macro-Mesh", coords)
 participant.initialize()
+
+for subdomain in model.mdg.subdomains():
+    data = model.mdg.subdomain_data(subdomain)
+    pp.set_solution_values(
+        name=model.face_transmissibility_cpl,
+        values=np.ones(subdomain.num_faces),
+        data=data,
+        iterate_index=0,
+    )
+    pp.set_solution_values(
+        name=model.face_transmissibility_no_cpl,
+        values=np.zeros(subdomain.num_faces),
+        data=data,
+        iterate_index=0,
+    )
 
 aperture_cpl = np.full(coords.shape[0], Aperture, dtype=float)
 pressure = model.equation_system.evaluate(model.pressure([sd]))
@@ -68,14 +86,33 @@ while participant.is_coupling_ongoing():
     dt = participant.get_max_time_step_size()
     model.time_manager.dt = dt
 
-    read_avg_v = participant.read_data("Macro-Mesh", "flux", vertex_ids, dt)
+    # The received values is volumetric fluxes per width (total_phi(m^3/s)/width)
+    read_flux_per_width = participant.read_data("Macro-Mesh", "flux", vertex_ids, dt)
+    read_flux = mu * read_flux_per_width * H
 
-    # Infer an effective fracture permeability from received average velocity:
-    k_default = aperture_cpl * aperture_cpl / 12.0
-    k_face = mu * np.abs(read_avg_v) / np.abs(pressure_grad)
-    k_face = np.nan_to_num(k_face, nan=k_default, posinf=k_default, neginf=k_default)
+    valid = np.isfinite(read_flux) & np.isfinite(pressure_grad)
+    valid &= np.abs(pressure_grad) > 1e-20
 
-    model.params["fracture_permeability"] = k_face
+    face_transmissibility = np.zeros(sd.num_faces)
+    face_transmissibility[coupling_faces[valid]] = (
+        read_flux[valid] / pressure_grad[valid]
+    )
+
+    face_mask = np.zeros(sd.num_faces)
+    face_mask[coupling_faces[valid]] = 1.0
+
+    pp.set_solution_values(
+        name=model.face_transmissibility_cpl,
+        values=face_transmissibility,
+        data=model.mdg.subdomain_data(sd),
+        iterate_index=0,
+    )
+    pp.set_solution_values(
+        name=model.face_transmissibility_no_cpl,
+        values=face_mask,
+        data=model.mdg.subdomain_data(sd),
+        iterate_index=0,
+    )
 
     solver.solve(model)
 

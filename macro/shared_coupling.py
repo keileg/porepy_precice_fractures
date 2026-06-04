@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 import porepy as pp
+import scipy.sparse as sps
 
 
 def coupling_faces_and_coords(sd: pp.Grid) -> tuple[np.ndarray, np.ndarray]:
@@ -28,11 +29,24 @@ def get_pressure_grad(
     coupling_faces: np.ndarray,
     p: np.ndarray,
 ) -> np.ndarray:
+    return (pressure_gradient_matrix(sd, coupling_faces) @ p)[coupling_faces]
+
+
+def pressure_gradient_matrix(
+    sd: pp.Grid,
+    coupling_faces: np.ndarray | None = None,
+) -> sps.csr_matrix:
     fc = sd.cell_faces.tocsr()
 
-    grad = np.zeros(coupling_faces.size)
+    if coupling_faces is None:
+        num_adjacent_cells = np.diff(fc.indptr)
+        coupling_faces = np.where(num_adjacent_cells == 2)[0]
 
-    for i, f in enumerate(coupling_faces):
+    rows = []
+    cols = []
+    vals = []
+
+    for f in coupling_faces:
         start = fc.indptr[f]
         end = fc.indptr[f + 1]
 
@@ -42,12 +56,15 @@ def get_pressure_grad(
         if cells.size != 2:
             raise ValueError(f"Face {f} is not an internal face.")
 
-        dp = signs[0] * p[cells[0]] + signs[1] * p[cells[1]]
-
         x0 = sd.cell_centers[:, cells[0]]
         x1 = sd.cell_centers[:, cells[1]]
         dist = np.linalg.norm(x1 - x0)
 
-        grad[i] = dp / dist
+        rows.extend([f, f])
+        cols.extend(cells)
+        vals.extend(signs / dist)
 
-    return grad
+    return sps.coo_matrix(
+        (vals, (rows, cols)),
+        shape=(sd.num_faces, sd.num_cells),
+    ).tocsr()

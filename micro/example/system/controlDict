@@ -64,6 +64,24 @@ functions
         operation       areaNormalAverage;
         fields          (U);
     }
+
+    outletFlowRate
+    {
+        type            surfaceFieldValue;
+        libs            (fieldFunctionObjects);
+
+        writeControl    timeStep;
+        writeInterval   10;
+
+        writeFields     false;
+
+        regionType      patch;
+        name            outlet;
+
+        operation       sum;
+        fields          (phi);
+    }
+
 	outletMaxVelocity
     {
         type            surfaceFieldValue;
