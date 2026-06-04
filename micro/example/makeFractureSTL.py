@@ -5,6 +5,7 @@ from pysimfrac import SimFrac
 from pathlib import Path
 import classy_blocks as cb
 import argparse
+import io
 import matplotlib.pyplot as plt
 
 def plot_spatial_frequency_psd(X, Y, Z, filename="psd.png"):
@@ -69,30 +70,25 @@ def normal(a, b, c):
 
 
 def write_ascii_stl(filename, region_triangles):
+    print(f"Serializing")
+
+    f = io.StringIO()
+    for region, triangles in region_triangles.items():
+        print(f"Region {region}")
+
+        f.write(f"solid {region}\n")
+        f.writelines((
+            f"facet normal {n[0]} {n[1]} {n[2]}\nouter loop\n"
+            f"vertex {a[0]} {a[1]} {a[2]}\n"
+            f"vertex {b[0]} {b[1]} {b[2]}\n"
+            f"vertex {c[0]} {c[1]} {c[2]}\n"
+            "endloop\nendfacet\n"
+            for a, b, c, n in triangles
+            ))
+        f.write(f"endsolid {region}\n")
+
     print(f"Writing to {filename.absolute()}")
-    with filename.open("w", buffering=2**14) as f:
-        for region, triangles in region_triangles.items():
-            print(f"Region {region}")
-
-            triangles = np.array(triangles, dtype=np.float32)  # shape: (N, 3, 3)
-            v1 = triangles[:, 1] - triangles[:, 0]
-            v2 = triangles[:, 2] - triangles[:, 0]
-            n = np.cross(v1, v2)
-            n /= np.linalg.norm(n, axis=1, keepdims=True)  # shape: (N, 3)
-            result = np.concatenate([n[:, np.newaxis, :], triangles], axis=1)
-
-            f.write(f"solid {region}\n")
-
-            for a, b, c, n in result:
-                f.write(f"  facet normal {n[0]} {n[1]} {n[2]}\n")
-                f.write("    outer loop\n")
-                f.write(f"      vertex {a[0]} {a[1]} {a[2]}\n")
-                f.write(f"      vertex {b[0]} {b[1]} {b[2]}\n")
-                f.write(f"      vertex {c[0]} {c[1]} {c[2]}\n")
-                f.write("    endloop\n")
-                f.write("  endfacet\n")
-
-            f.write(f"endsolid {region}\n")
+    filename.write_text(f.getvalue())
 
 
 def make_stl_from_top_bot(X, Y, Top, Bot, filename: Path):
@@ -109,36 +105,49 @@ def make_stl_from_top_bot(X, Y, Top, Bot, filename: Path):
     T = np.dstack((X, Y, Top))
     B = np.dstack((X, Y, Bot))
 
+    n_top_bot = (ny - 1) * (nx - 1) * 2
+    n_sides   = (ny - 1) * 2          # left, right
+    n_fb      = (nx - 1) * 2          # front, back
+
+    # n triangles of 3 points + normal in 3D
     regions = {
-        "top": [],
-        "bottom": [],
-        "left": [],
-        "right": [],
-        "front": [],
-        "back": [],
+        "top":    np.empty((n_top_bot, 4, 3), dtype=np.float32),
+        "bottom": np.empty((n_top_bot, 4, 3), dtype=np.float32),
+        "left":   np.empty((n_sides,   4, 3), dtype=np.float32),
+        "right":  np.empty((n_sides,   4, 3), dtype=np.float32),
+        "front":  np.empty((n_fb,      4, 3), dtype=np.float32),
+        "back":   np.empty((n_fb,      4, 3), dtype=np.float32),
     }
 
-    def add_quad(region, p00, p10, p11, p01):
-        regions[region].append((p00, p10, p11))
-        regions[region].append((p00, p11, p01))
+    def add_quad(region, idx, p00, p10, p11, p01):
+        regions[region][2*idx, :-1] = (p00, p10, p11)
+        regions[region][2*idx+1, :-1] = (p00, p11, p01)
 
     # Top and bottom surfaces
     for j in range(ny - 1):
         for i in range(nx - 1):
-            add_quad("top", T[j, i], T[j, i + 1], T[j + 1, i + 1], T[j + 1, i])
-            add_quad("bottom", B[j, i], B[j + 1, i], B[j + 1, i + 1], B[j, i + 1])
+            idx = j * (nx - 1) + i
+            add_quad("top", idx, T[j, i], T[j, i + 1], T[j + 1, i + 1], T[j + 1, i])
+            add_quad("bottom", idx, B[j, i], B[j + 1, i], B[j + 1, i + 1], B[j, i + 1])
 
     # x-min side: inlet
     ileft, iright = 0, nx - 1
     for j in range(ny - 1):
-        add_quad("left", B[j, ileft], T[j, ileft], T[j + 1, ileft], B[j + 1, ileft])
-        add_quad("right", B[j, iright], B[j + 1, iright], T[j + 1, iright], T[j, iright])
+        add_quad("left", j, B[j, ileft], T[j, ileft], T[j + 1, ileft], B[j + 1, ileft])
+        add_quad("right", j, B[j, iright], B[j + 1, iright], T[j + 1, iright], T[j, iright])
 
     # y-min side: empty
     jfront, jback = 0, ny - 1
     for i in range(nx - 1):
-        add_quad("front", B[jfront, i], B[jfront, i + 1], T[jfront, i + 1], T[jfront, i])
-        add_quad("back", B[jback, i], T[jback, i], T[jback, i + 1], B[jback, i + 1])
+        add_quad("front", i, B[jfront, i], B[jfront, i + 1], T[jfront, i + 1], T[jfront, i])
+        add_quad("back", i, B[jback, i], T[jback, i], T[jback, i + 1], B[jback, i + 1])
+
+    for reg in regions.values():
+        v1 = reg[:, 1] - reg[:, 0]
+        v2 = reg[:, 2] - reg[:, 0]
+        n = np.cross(v1, v2)
+        n /= np.linalg.norm(n, axis=1, keepdims=True)  # shape: (N, 3)
+        reg[:, 3] = n
 
     write_ascii_stl(filename, regions)
 
