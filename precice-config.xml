@@ -1,29 +1,30 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <precice-configuration>
   <log>
-    <sink type="stream" output="stdout" filter="%Severity% > debug"/>
+    <sink type="stream" output="stdout" filter="%Severity% > trace"/>
+    <!-- <sink type="file" output="debug.log" filter="%Severity% >= debug"/> -->
   </log>
 
-  <data:scalar name="pressure-difference"/>
+  <data:scalar name="pressure-grad"/>
   <data:scalar name="flux"/>
   <data:scalar name="aperture"/>
 
   <mesh name="Macro-Mesh" dimensions="2">
-    <use-data name="pressure-difference"/>
+    <use-data name="pressure-grad"/>
     <use-data name="flux"/>
     <use-data name="aperture"/>
   </mesh>
 
   <participant name="Macro">
     <provide-mesh name="Macro-Mesh"/>
-    <write-data name="pressure-difference" mesh="Macro-Mesh"/>
+    <write-data name="pressure-grad" mesh="Macro-Mesh"/>
     <write-data name="aperture" mesh="Macro-Mesh"/>
     <read-data name="flux" mesh="Macro-Mesh"/>
   </participant>
 
   <participant name="Micro-Manager">
     <receive-mesh name="Macro-Mesh" from="Macro" api-access="true" safety-factor="0"/>
-    <read-data name="pressure-difference" mesh="Macro-Mesh"/>
+    <read-data name="pressure-grad" mesh="Macro-Mesh"/>
     <read-data name="aperture" mesh="Macro-Mesh"/>
     <write-data name="flux" mesh="Macro-Mesh"/>
   </participant>
@@ -34,12 +35,15 @@
 
   <coupling-scheme:serial-implicit>
     <participants first="Macro" second="Micro-Manager"/>
-    <time-window-size value="0.1"/>
-    <max-time value="0.3"/>
-    <max-iterations value="15" />
-    <exchange data="pressure-difference" mesh="Macro-Mesh" from="Macro" to="Micro-Manager"/>
+    <time-window-size value="60"/>
+    <max-time value="18000"/>
+    <max-iterations value="100" />
+    <exchange data="pressure-grad" mesh="Macro-Mesh" from="Macro" to="Micro-Manager"/>
     <exchange data="flux" mesh="Macro-Mesh" from="Micro-Manager" to="Macro"/>
     <exchange data="aperture" mesh="Macro-Mesh" from="Macro" to="Micro-Manager"/>
-    <relative-convergence-measure data="pressure-difference" mesh="Macro-Mesh" limit="1e-5"/>
+    <relative-convergence-measure data="pressure-grad" mesh="Macro-Mesh" limit="1e-5"/>
+    <!-- <acceleration:IQN-ILS>
+      <data name="flux" mesh="Macro-Mesh"/>
+    </acceleration:IQN-ILS> -->
   </coupling-scheme:serial-implicit>
 </precice-configuration>

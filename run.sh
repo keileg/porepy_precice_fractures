@@ -2,25 +2,14 @@
 
 set -ex
 
-# setup venv
-python3 -m venv venv
-. venv/bin/activate
-pip install -r requirements.txt
-
-# check if all commands are available
-hash blockMesh
-hash simpleFoam
-hash micro-manager-precice
-
-# check if the micro simulation is importable
-python3 -c "import micro.micro"
-
 # cleanup
 
 rm -fr precice-run
+rm -fr micro/micro-runs/*
+rm -fr macro/visualization
 
 # run
 
-( cd macro && python3 macro.py ) &
+( cd macro && . .venv/bin/activate && python3 macro_porepy_3D.py > porepy.log 2>&1) &
 
-( cd micro && micro-manager-precice micro-manager-config.json )
+( cd micro && . ~/Software/others/venvs/common/bin/activate && micro-manager-precice micro-manager-config.json > micro.log 2>&1)

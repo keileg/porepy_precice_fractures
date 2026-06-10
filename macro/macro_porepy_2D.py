@@ -5,6 +5,7 @@ import numpy as np
 import precice
 from porepy.models.fluid_mass_balance import SinglePhaseFlow, BoundaryConditionsSinglePhaseFlow, FluidMassBalanceEquations
 from porepy.applications.md_grids.domains import nd_cube_domain
+from shared_coupling import get_pressure_grad
 
 
 h = 0.25
@@ -136,38 +137,6 @@ def full_face_flux_from_internal_faces(
 
     return q_full
 
-def get_pressure_diff(
-    sd: pp.Grid,
-    internal_faces: np.ndarray,
-    p: np.ndarray,
-) -> np.ndarray:
-    fc = sd.cell_faces.tocsr()
-
-    dp = np.zeros(internal_faces.size)
-    dist = np.zeros(internal_faces.size)
-    grad = np.zeros(internal_faces.size)
-
-    for i, f in enumerate(internal_faces):
-        start = fc.indptr[f]
-        end = fc.indptr[f + 1]
-
-        cells = fc.indices[start:end]
-        signs = fc.data[start:end]
-
-        if cells.size != 2:
-            raise ValueError(f"Face {f} is not an internal face.")
-
-        # Orientation-dependent jump.
-        dp[i] = signs[0] * p[cells[0]] + signs[1] * p[cells[1]]
-        
-        x0 = sd.cell_centers[:, cells[0]]
-        x1 = sd.cell_centers[:, cells[1]]
-        dist[i] = np.linalg.norm(x1 - x0)
-        
-        grad[i] = dp[i] / dist[i]
-
-    return grad
-
 solid_constants = pp.SolidConstants(permeability=0.833687/h)
 fluid_constants = pp.FluidComponent(viscosity=1.0e-3, density=1000.0) #mu(Pa * second)(kg/m^3) for H2O
 material_constants = {"fluid": fluid_constants, "solid":solid_constants}
@@ -217,9 +186,9 @@ while participant.is_coupling_ongoing():
 
     pressure = model.equation_system.evaluate(model.pressure([sd]))
     print("pressure", pressure)
-    pressure_diff = get_pressure_diff(sd, internal_faces, pressure)
-    print("pressure diff", pressure_diff)
-    participant.write_data("Macro-Mesh", "pressure-difference", vertex_ids, pressure_diff)
+    pressure_grad = get_pressure_grad(sd, internal_faces, pressure)
+    print("pressure gradient", pressure_grad)
+    participant.write_data("Macro-Mesh", "pressure-grad", vertex_ids, pressure_grad)
 
     # prepare aperture for each vertex according to the x-coord
     aperture = [ 0.1/(x/h) for x, _ in coords ]
