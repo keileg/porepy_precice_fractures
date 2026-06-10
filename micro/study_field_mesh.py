@@ -10,10 +10,11 @@ import subprocess
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
+
 from foamlib import FoamCase
 
-BASE_CASE = Path(__file__).resolve().parent
-DEFAULT_RUN_ROOT = BASE_CASE.parent / "field_mesh_study"
+BASE_CASE = "./example"
+DEFAULT_RUN_ROOT = "./field_mesh_study"
 GENERATOR = BASE_CASE / "makeFractureSTL.py"
 
 
