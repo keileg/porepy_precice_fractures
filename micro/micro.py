@@ -1,11 +1,16 @@
+import sys
+from copy import copy
 from pathlib import Path
 
 import numpy as np
 from foamlib import DimensionSet, FoamCase
-from foamlib.postprocessing.load_tables import load_tables, functionobject
-import sys
-from copy import copy
+from foamlib.postprocessing.load_tables import functionobject, load_tables
+
 import example.makeBlockMesh as mesh
+from example.makeFractureSTL import (make_background_from_top_bot,
+                                     make_stl_from_top_bot, makeFracture,
+                                     patch_midpoint)
+
 
 class MicroSimulation():
     def __init__(self, sim_id):
@@ -13,7 +18,7 @@ class MicroSimulation():
         Constructor of MicroSimulation class.
         """
         self._sim_id = sim_id
-        self._root_path = f"./micro-runs/micro-{sim_id}"
+        self._root_path = Path(f"./micro-runs/micro-{sim_id}")
         self._width = 0.005 # width of the channel
         FoamCase("./example").clone(self._root_path)
         print(f"Sim {sim_id} created {self._root_path}")
@@ -30,8 +35,23 @@ class MicroSimulation():
             
         fc = FoamCase(self._root_path)
         thickness=macro_data["aperture"]
-        mesh.meshFor(nx=10,amplitude=0,waves=1,aperture=thickness,shift=0).write(self._root_path + "/system/blockMeshDict")
+        # use channel geometry
+        # mesh.meshFor(nx=10,amplitude=0,waves=1,aperture=thickness,shift=0).write(self._root_path + "/system/blockMeshDict")
 
+        # use fracture geometry
+        x, y, t, b = makeFracture(
+            aperture=thickness * 1000, # it uses mm
+            shear=1.0,
+            disc=1,
+            roughness=0.2,
+            lx=40,
+            ly=40,
+        )
+        make_stl_from_top_bot(x, y, t, b, self._root_path / "constant/triSurface/fracture.stl")
+        make_background_from_top_bot(x, y, t, b, self._root_path / "system/blockMeshDict", 2)
+        patch_midpoint(x, y, t, b, self._root_path / "system/snappyHexMeshDict")
+
+        # overwrite pressure at inlet
         with fc[0]["p"] as f:
             f.dimensions = DimensionSet(length=2, time=-2)
             f.internal_field = 0.0
@@ -40,7 +60,7 @@ class MicroSimulation():
                 "outlet": {"type": "fixedValue", "value": 0},
                 "upperWall": {"type": "zeroGradient"},
                 "lowerWall": {"type": "zeroGradient"},
-                "frontAndBack": {"type": "empty"},
+                "frontAndBack": {"type": "zeroGradient"}, # use "empty" for channel flow
             }
 
         fc.run()
