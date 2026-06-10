@@ -1,4 +1,0 @@
-pysimfrac @ git+https://github.com/lanl/pySimFrac.git
-classy_blocks
-numpy
-foamlib
