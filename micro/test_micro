@@ -1,0 +1,20 @@
+#!/bin/env python3
+
+from micro import MicroSimulation
+import argparse
+
+p = argparse.ArgumentParser()
+p.add_argument("-p", type=float, default=10)
+p.add_argument("-a", type=float, default=1)
+p.add_argument("-dt", type=float, default=60)
+p.add_argument("-sid", type=int, default=0)
+a = p.parse_args()
+
+macro_data = { "pressure-grad": a.p, "aperture": a.a }
+
+print(f"Constructing MicroSimulation with simid {a.sid}")
+m = MicroSimulation(a.sid)
+m.initialize()
+print(f"Solving with input {macro_data} and dt={a.dt}")
+out = m.solve(macro_data, a.dt)
+print(f"Result {out}")
