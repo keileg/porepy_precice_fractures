@@ -5,7 +5,7 @@ import argparse
 
 p = argparse.ArgumentParser()
 p.add_argument("-p", type=float, default=10)
-p.add_argument("-a", type=float, default=1)
+p.add_argument("-a", type=float, default=0.001)
 p.add_argument("-dt", type=float, default=60)
 p.add_argument("-sid", type=int, default=0)
 a = p.parse_args()
