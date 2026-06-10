@@ -191,9 +191,9 @@ def makeFracture(
     fracture.params["H"]["value"] = 0.8 # common value for natural rock fracture
     fracture.create_fracture()
 
-    fracture.compute_moments()
-    fig,ax = fracture.plot_surface_pdf()
-    fig.savefig(fname="surface")
+    # fracture.compute_moments()
+    # fig,ax = fracture.plot_surface_pdf()
+    # fig.savefig(fname="surface")
 
     # move X and Y to 0 origin
     # transform mm to m to be consistent with openfoam
@@ -217,12 +217,12 @@ def makeFracture(
     print(f"Y {Y.min()} {Y.max()}")
     print(f"Z {bottom.min()} {top.max()}")
 
-    plot_spatial_frequency_psd(
-        X,
-        Y,
-        top - bottom,
-        filename="aperture_psd.png",
-    )
+    # plot_spatial_frequency_psd(
+    #     X,
+    #     Y,
+    #     top - bottom,
+    #     filename="aperture_psd.png",
+    # )
 
     return X, Y, top, bottom
 
