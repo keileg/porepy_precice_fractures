@@ -30,7 +30,7 @@ writeControl    timeStep;
 
 writeInterval   1;
 
-purgeWrite      10;
+purgeWrite      1;
 
 writeFormat     ascii;
 
@@ -63,6 +63,24 @@ functions
 
         operation       areaNormalAverage;
         fields          (U);
+    }
+    outletFlux
+    {
+        type            surfaceFieldValue;
+        libs            (fieldFunctionObjects);
+
+        log             true;
+        writeControl    timeStep;
+        writeInterval   10;
+
+        writeFields     false;
+        surfaceFormat   none;
+
+        regionType      patch;
+        name            outlet;
+
+        operation       sum;
+        fields          (phi);
     }
 	outletMaxVelocity
     {

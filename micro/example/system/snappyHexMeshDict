@@ -19,7 +19,7 @@ FoamFile
 
 castellatedMesh true;
 snap true;
-addLayers true;
+addLayers false;
 mergeTolerance 1e-06;
 debug 0;
 
@@ -42,12 +42,12 @@ geometry
 
 
 castellatedMeshControls {
-  locationInMesh (0.10050251256281406 0.10050251256281406 0.0036076959403250914);
+  locationInMesh (0.02051282051282051 0.02051282051282051 -0.0004331073257387477);
   maxLocalCells 1000000;
   maxGlobalCells 1000000;
   minRefinementCells 0;
 
-  nCellsBetweenLevels 1;
+  nCellsBetweenLevels 2;
   resolveFeatureAngle 30;
 
   allowFreeStandingZoneFaces false;
@@ -57,7 +57,7 @@ castellatedMeshControls {
   {
     fracture.stl
     {
-      level (1 4);
+      level (0 0);
     }
   }
   refinementRegions {}
@@ -79,13 +79,13 @@ snapControls{
 addLayersControls{
   relativeSizes false;
   expansionRatio 1.2;
-  finalLayerThickness 0.00001;
-  minThickness 1e-6;
+  finalLayerThickness 0.000001;
+  minThickness 1e-7;
 
   layers
   {
-    upperWall { nSurfaceLayers 5; }
-    lowerWall { nSurfaceLayers 5; }
+    upperWall { nSurfaceLayers 3; }
+    lowerWall { nSurfaceLayers 3; }
   }
 
   nGrow 0;

@@ -88,6 +88,7 @@ def write_ascii_stl(filename, region_triangles):
         f.write(f"endsolid {region}\n")
 
     print(f"Writing to {filename.absolute()}")
+    filename.parent.mkdir(parents=True, exist_ok=True)
     filename.write_text(f.getvalue())
 
 
@@ -153,15 +154,40 @@ def make_stl_from_top_bot(X, Y, Top, Bot, filename: Path):
 
 SEED = 42
 
-def makeFracture(aperture: float, roughness: float, shear: float, disc: float):
+def print_fracture_aperture_metrics(fracture, top_m, bottom_m):
+    def format_value(value):
+        if value is None:
+            return "None"
+        return f"{value:0.6g}"
+
+    fracture.top = top_m * 1000
+    fracture.bottom = bottom_m * 1000
+    fracture.aperture = fracture.top - fracture.bottom
+    fracture.mean_aperture = float(np.mean(fracture.aperture))
+
+    fracture.compute_acf(surface="aperture")
+    acf = fracture.acf["aperture"]
+    print("Aperture correlation length")
+    print(f"  x: {format_value(acf['x']['correlation'])} {fracture.units}")
+    print(f"  y: {format_value(acf['y']['correlation'])} {fracture.units}")
+
+def makeFracture(
+    aperture: float,
+    roughness: float,
+    shear: float,
+    disc: float,
+    lx: float = 20,
+    ly: float = 20,
+):
+    from pysimfrac import SimFrac
+
     # We need to use mm. Using m leads to div by zero
-    x, y = 200,200
-    fracture = SimFrac(h=disc, lx=x, ly=y, shear=shear, method="spectral", units="mm")
+    fracture = SimFrac(h=disc, lx=lx, ly=ly, shear=shear, method="spectral", units="mm")
     fracture.params["seed"]["value"] = SEED
     fracture.params["mean-aperture"]["value"] = aperture
     fracture.params["roughness"]["value"] = roughness
     fracture.params["mismatch"]["value"] = 1
-    fracture.params["lambda_0"]["value"] = 1
+    fracture.params["lambda_0"]["value"] = 10/lx # determine the min. frequency; the larger l_0, the lower f_min
     fracture.params["H"]["value"] = 0.8 # common value for natural rock fracture
     fracture.create_fracture()
 
@@ -184,6 +210,7 @@ def makeFracture(aperture: float, roughness: float, shear: float, disc: float):
     bottom = midpoint - 0.5 * aperture
 
     assert((top > bottom).all())
+    print_fracture_aperture_metrics(fracture, top, bottom)
 
     print("Mesh AABB")
     print(f"X {X.min()} {X.max()}")
@@ -199,7 +226,8 @@ def makeFracture(aperture: float, roughness: float, shear: float, disc: float):
 
     return X, Y, top, bottom
 
-def make_background_from_top_bot(X, Y, Top, Bot, filename: Path):
+
+def make_background_from_top_bot(X, Y, Top, Bot, filename: Path, factor: float):
     X = np.asarray(X)
     Y = np.asarray(Y)
     Top = np.asarray(Top)
@@ -215,16 +243,15 @@ def make_background_from_top_bot(X, Y, Top, Bot, filename: Path):
     minp = [xmin, ymin, zmin]
     maxp = [xmax, ymax, zmax]
 
-    factor = 2
-
     mesh = cb.Mesh()
     box = cb.Box(minp, maxp)
-    box.chop(0, count=10*factor)
-    box.chop(1, count=5*factor)
-    box.chop(2, count=(zmax-zmin)*1000*factor)
+    box.chop(0, count=X.shape[1] * factor)
+    box.chop(1, count=X.shape[0] * factor)
+    box.chop(2, count=(zmax - zmin) * 1000 * 8 * factor)
     mesh.add(box)
 
     print(f"Writing background mesh to {filename.absolute()}")
+    filename.parent.mkdir(parents=True, exist_ok=True)
     mesh.write(filename)
 
 def patch_midpoint(X, Y, T, B, filename: Path):
@@ -245,12 +272,24 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--case", type=Path, default=Path(__file__).parent)
     parser.add_argument("--aperture", type=float, default=1.0)
-    parser.add_argument("--roughness", type=float, default=3.0)
+    parser.add_argument("--roughness", type=float, default=0.2)
     parser.add_argument("--shear", type=float, default=1)
     parser.add_argument("--disc", type=float, default=1)
+    parser.add_argument("--lx", type=float, default=40, help="fracture length in x direction [mm]")
+    parser.add_argument("--ly", type=float, default=40, help="fracture length in y direction [mm]")
+    parser.add_argument("--factor", type=float, default=2, help="background mesh z-cell factor [cells/mm]")
+ 
     args = parser.parse_args()
 
-    x, y, t, b = makeFracture(aperture=args.aperture, shear=args.shear, disc=args.disc, roughness=args.roughness)
+    x, y, t, b = makeFracture(
+        aperture=args.aperture,
+        shear=args.shear,
+        disc=args.disc,
+        roughness=args.roughness,
+        lx=args.lx,
+        ly=args.ly,
+    )
+
     make_stl_from_top_bot(x, y, t, b, args.case / "constant/triSurface/fracture.stl")
-    make_background_from_top_bot(x, y, t, b, args.case / "system/blockMeshDict")
+    make_background_from_top_bot(x, y, t, b, args.case / "system/blockMeshDict", args.factor)
     patch_midpoint(x, y, t, b, args.case / "system/snappyHexMeshDict")
