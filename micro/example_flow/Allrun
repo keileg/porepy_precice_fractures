@@ -1,0 +1,12 @@
+#!/bin/bash
+
+echo "Running blockMesh..."
+blockMesh > log.blockMesh 2>&1
+
+echo "Running snappyHexMesh..."
+snappyHexMesh -overwrite > log.snappyHexMesh 2>&1
+
+echo "Running simpleFoam..."
+simpleFoam > log.simpleFoam 2>&1
+
+echo "Done."
