@@ -28,7 +28,7 @@ deltaT          0.05;
 
 writeControl    adjustableRunTime;
 
-writeInterval   1;
+writeInterval   10;
 
 purgeWrite      1;
 
@@ -46,23 +46,17 @@ runTimeModifiable true;
 
 functions
 {
-    outletFlux
+    componentsU
     {
-        type            surfaceFieldValue;
+        type            components;
         libs            (fieldFunctionObjects);
+        field           U;
 
-        writeControl    timeStep;
-        writeInterval   1;
-
-        writeFields     false;
-
-        regionType      patch;
-        name            outlet;
-
-        operation       weightedAreaAverage;
-        weightField     phi;
-        fields          (T);
+        executeControl  timeStep;
+        executeInterval 1;
+        writeControl    none;
     }
+    #include "PlaneSamplingT"
 
     stopAtTracerBreakthrough
     {
@@ -81,7 +75,6 @@ functions
             }
         }
     }
-
 }
 
 // ************************************************************************* //

@@ -1,20 +1,21 @@
 from __future__ import annotations
 
-from typing import Sequence
+from typing import Sequence, cast
 
 import numpy as np
 import porepy as pp
+import scipy.sparse as sps
 from porepy.applications.material_values.fluid_values import water
-from porepy.models.compositional_flow import (
-    BoundaryConditionsMulticomponent,
-    InitialConditionsFractions,
-)
 from porepy.applications.md_grids.domains import nd_cube_domain
+from porepy.models.compositional_flow import (BoundaryConditionsMulticomponent,
+                                              InitialConditionsFractions)
+
+from shared_coupling import pressure_gradient_matrix
 
 class ModifiedGeometry:
     mesh_size = 0.1
     fracture_points = np.array(
-        [[0.2, 0.8, 0.8, 0.2], [0.2, 0.2, 0.8, 0.8], [0.5, 0.5, 0.5, 0.5],]
+        [[0.2, 0.4, 0.4, 0.2], [0.2, 0.2, 0.3, 0.3], [0.5, 0.5, 0.5, 0.5],]
     )
 
     def set_domain(self) -> None:
@@ -63,7 +64,7 @@ class TracerBC(BoundaryConditionsMulticomponent):
         domain_sides = self.domain_boundary_sides(bg)
         values = np.zeros(bg.num_cells)
         # See section on scaling for explanation of the conversion.
-        values[domain_sides.west] = self.units.convert_units(10, "Pa")
+        values[domain_sides.west] = self.units.convert_units(20, "Pa")
         values[domain_sides.east] = self.units.convert_units(0, "Pa")
         return values
 
@@ -82,3 +83,49 @@ class TracerBC(BoundaryConditionsMulticomponent):
         z[domain_sides.west] = 0.2 
 
         return z
+
+class FaceDispersionMixin:
+
+    face_dispersion_cpl = "face_dispersion"
+    face_dispersion_no_cpl = "face_dispersion_mask"
+
+    def _tracer_fraction_gradient_matrix(
+        self, domains: list[pp.Grid]
+    ) -> sps.csr_matrix:
+        matrices = [pressure_gradient_matrix(sd) for sd in domains]
+        if len(matrices) == 0:
+            return sps.csr_matrix((0, 0))
+        return sps.block_diag(matrices, format="csr")
+
+    def component_flux(
+        self, component: pp.Component, domains: pp.SubdomainsOrBoundaries
+    ) -> pp.ad.Operator:
+        flux = super().component_flux(component, domains)
+
+        if component.name != "tracer":
+            return flux
+
+        if len(domains) == 0 or all(isinstance(g, pp.BoundaryGrid) for g in domains):
+            return flux
+
+        if not all(isinstance(g, pp.Grid) for g in domains):
+            raise ValueError("Domains must consist entirely of subdomains.")
+
+        domains = cast(list[pp.Grid], domains)
+        gradient = pp.ad.SparseArray(
+            self._tracer_fraction_gradient_matrix(domains),
+            name="tracer_fraction_gradient_matrix",
+        ) @ component.fraction(domains)
+        dispersion = pp.ad.TimeDependentDenseArray(
+            name=self.face_dispersion_cpl,
+            domains=domains,
+        )
+        mask = pp.ad.TimeDependentDenseArray(
+            name=self.face_dispersion_no_cpl,
+            domains=domains,
+        )
+
+        dispersive_flux = pp.ad.Scalar(-1.0) * mask * dispersion * gradient
+        flux += dispersive_flux
+        flux.set_name(f"component_flux_{component.name}_with_dispersion")
+        return flux

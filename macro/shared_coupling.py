@@ -32,6 +32,14 @@ def get_pressure_grad(
     return (pressure_gradient_matrix(sd, coupling_faces) @ p)[coupling_faces]
 
 
+def get_face_scalar_grad(
+    sd: pp.Grid,
+    coupling_faces: np.ndarray,
+    values: np.ndarray,
+) -> np.ndarray:
+    return (pressure_gradient_matrix(sd, coupling_faces) @ values)[coupling_faces]
+
+
 def pressure_gradient_matrix(
     sd: pp.Grid,
     coupling_faces: np.ndarray | None = None,

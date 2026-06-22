@@ -6,27 +6,35 @@
   </log>
 
   <data:scalar name="pressure-grad"/>
+  <data:scalar name="tracer-fraction-grad"/>
   <data:scalar name="flux"/>
   <data:scalar name="aperture"/>
+  <data:scalar name="dispersion"/>
 
   <mesh name="Macro-Mesh" dimensions="2">
     <use-data name="pressure-grad"/>
+    <use-data name="tracer-fraction-grad"/>
     <use-data name="flux"/>
     <use-data name="aperture"/>
+    <use-data name="dispersion"/>
   </mesh>
 
   <participant name="Macro">
     <provide-mesh name="Macro-Mesh"/>
     <write-data name="pressure-grad" mesh="Macro-Mesh"/>
+    <write-data name="tracer-fraction-grad" mesh="Macro-Mesh"/>
     <write-data name="aperture" mesh="Macro-Mesh"/>
     <read-data name="flux" mesh="Macro-Mesh"/>
+    <read-data name="dispersion" mesh="Macro-Mesh"/>
   </participant>
 
   <participant name="Micro-Manager">
     <receive-mesh name="Macro-Mesh" from="Macro" api-access="true" safety-factor="0"/>
     <read-data name="pressure-grad" mesh="Macro-Mesh"/>
+    <read-data name="tracer-fraction-grad" mesh="Macro-Mesh"/>
     <read-data name="aperture" mesh="Macro-Mesh"/>
     <write-data name="flux" mesh="Macro-Mesh"/>
+    <write-data name="dispersion" mesh="Macro-Mesh"/>
   </participant>
 
   <m2n:sockets acceptor="Micro-Manager"
@@ -39,8 +47,10 @@
     <max-time value="18000"/>
     <max-iterations value="100" />
     <exchange data="pressure-grad" mesh="Macro-Mesh" from="Macro" to="Micro-Manager"/>
-    <exchange data="flux" mesh="Macro-Mesh" from="Micro-Manager" to="Macro"/>
+    <exchange data="tracer-fraction-grad" mesh="Macro-Mesh" from="Macro" to="Micro-Manager"/>
     <exchange data="aperture" mesh="Macro-Mesh" from="Macro" to="Micro-Manager"/>
+    <exchange data="flux" mesh="Macro-Mesh" from="Micro-Manager" to="Macro"/>
+    <exchange data="dispersion" mesh="Macro-Mesh" from="Micro-Manager" to="Macro"/>
     <relative-convergence-measure data="pressure-grad" mesh="Macro-Mesh" limit="1e-5"/>
     <!-- <acceleration:IQN-ILS>
       <data name="flux" mesh="Macro-Mesh"/>
