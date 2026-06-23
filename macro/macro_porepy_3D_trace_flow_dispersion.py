@@ -21,7 +21,6 @@ from shared_flux import (
 )
 from shared_flow import TracerBC, TracerFluid, TracerIC, ModifiedGeometry, FaceDispersionMixin
 
-H = 0.1
 mu = 1e-3
 
 class SinglePhaseFlowGeometry(
@@ -57,6 +56,7 @@ participant = precice.Participant("Macro", "../precice-config.xml", 0, 1)
 
 sd = model.mdg.subdomains(dim=2)[0]
 coupling_faces, coords = coupling_faces_and_coords(sd)
+coupling_face_widths = sd.face_areas[coupling_faces]
 vertex_ids = participant.set_mesh_vertices("Macro-Mesh", coords)
 participant.initialize()
 tracer_component = next(
@@ -106,9 +106,11 @@ while participant.is_coupling_ongoing():
     dt = participant.get_max_time_step_size()
     model.time_manager.dt = dt
 
-    # The received flux values is volumetric fluxes per width (total_phi(m^3/s)/width)
+    # The received flux values are volumetric fluxes per width
+    # (total_phi [m^3/s] / micro width). Multiply by the PorePy fracture face
+    # length to get an integrated macro face flux.
     read_flux_per_width = participant.read_data("Macro-Mesh", "flux", vertex_ids, dt)
-    read_flux = mu * read_flux_per_width * H
+    read_flux = mu * read_flux_per_width * coupling_face_widths
 
     valid = np.isfinite(read_flux) & np.isfinite(pressure_grad)
     valid &= np.abs(pressure_grad) > 1e-20
@@ -136,22 +138,20 @@ while participant.is_coupling_ongoing():
 
     # Read in dispersion
     read_dispersion = participant.read_data("Macro-Mesh", "dispersion", vertex_ids, dt)
-    dispersion_valid = np.isfinite(read_dispersion)
-
     face_dispersion = np.zeros(sd.num_faces)
     # The micro model returns an apparent dispersion coefficient [m^2/s].
     # The macro AD operator expects the coefficient in the integrated face mass flux
     # -C_f grad(z), so C_f = rho * effective_face_area * D.
     fracture_cell_aperture = model.equation_system.evaluate(model.aperture([sd]))
-    face_dispersion[coupling_faces[dispersion_valid]] = (
+    face_dispersion[coupling_faces] = (
         fluid_constants.density
-        * aperture_cpl[dispersion_valid]
-        * sd.face_areas[coupling_faces[dispersion_valid]]
-        * read_dispersion[dispersion_valid]
+        * aperture_cpl
+        * coupling_face_widths
+        * read_dispersion
     )
 
     dispersion_mask = np.zeros(sd.num_faces)
-    dispersion_mask[coupling_faces[dispersion_valid]] = 1.0
+    dispersion_mask[coupling_faces] = 1.0
 
     pp.set_solution_values(
         name=model.face_dispersion_cpl,
