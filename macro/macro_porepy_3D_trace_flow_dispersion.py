@@ -13,6 +13,7 @@ from shared_coupling import (
     coupling_faces_and_coords,
     get_face_scalar_grad,
     get_pressure_grad,
+    face_average_from_cells
 )
 from shared_flux import (
     FaceTransmissibilityFluxMixin,
@@ -22,7 +23,6 @@ from shared_flow import TracerBC, TracerFluid, TracerIC, ModifiedGeometry, FaceD
 
 H = 0.1
 mu = 1e-3
-Aperture = 0.001
 
 class SinglePhaseFlowGeometry(
     ModifiedGeometry,
@@ -42,7 +42,7 @@ class SinglePhaseFlowGeometry(
 
 fluid_constants = pp.FluidComponent(viscosity=mu, density=1000.0)
 solid_constants = pp.SolidConstants(
-    permeability=1e-10, normal_permeability=1e-8, residual_aperture=Aperture)
+    permeability=1e-10, normal_permeability=1e-8, residual_aperture=0.001)
 material_constants = {"fluid": fluid_constants, "solid": solid_constants}
 model_params = {"material_constants": material_constants, 
                 "time_manager": pp.TimeManager(
@@ -90,7 +90,8 @@ for subdomain in model.mdg.subdomains():
         iterate_index=0,
     )
 
-aperture_cpl = np.full(coords.shape[0], Aperture, dtype=float)
+fracture_cell_aperture = model.equation_system.evaluate(model.aperture([sd]))
+aperture_cpl = face_average_from_cells(sd, coupling_faces, fracture_cell_aperture)
 pressure = model.equation_system.evaluate(model.pressure([sd]))
 pressure_grad = get_pressure_grad(sd, coupling_faces, pressure)
 tracer_fraction = model.equation_system.evaluate(tracer_component.fraction([sd]))
@@ -141,9 +142,10 @@ while participant.is_coupling_ongoing():
     # The micro model returns an apparent dispersion coefficient [m^2/s].
     # The macro AD operator expects the coefficient in the integrated face mass flux
     # -C_f grad(z), so C_f = rho * effective_face_area * D.
+    fracture_cell_aperture = model.equation_system.evaluate(model.aperture([sd]))
     face_dispersion[coupling_faces[dispersion_valid]] = (
         fluid_constants.density
-        * Aperture
+        * aperture_cpl[dispersion_valid]
         * sd.face_areas[coupling_faces[dispersion_valid]]
         * read_dispersion[dispersion_valid]
     )
@@ -168,13 +170,15 @@ while participant.is_coupling_ongoing():
 
     pressure = model.equation_system.evaluate(model.pressure([sd]))
     pressure_grad = get_pressure_grad(sd, coupling_faces, pressure)
+    participant.write_data("Macro-Mesh", "pressure-grad", vertex_ids, pressure_grad)
+
     tracer_fraction = model.equation_system.evaluate(tracer_component.fraction([sd]))
     tracer_fraction_grad = get_face_scalar_grad(sd, coupling_faces, tracer_fraction)
-    # print("pressure gradient", pressure_grad)
-    participant.write_data("Macro-Mesh", "pressure-grad", vertex_ids, pressure_grad)
     participant.write_data(
         "Macro-Mesh", "tracer-fraction-grad", vertex_ids, tracer_fraction_grad
     )
+
+    aperture_cpl = face_average_from_cells(sd, coupling_faces, fracture_cell_aperture)
     participant.write_data("Macro-Mesh", "aperture", vertex_ids, aperture_cpl)
 
     participant.advance(dt)
@@ -186,7 +190,5 @@ while participant.is_coupling_ongoing():
         model.time_manager.increase_time_index()
         model.update_time_step_solution()
         model.save_data_time_step()
-        for intf, data in model.mdg.interfaces(return_data=True):
-            print(data[pp.TIME_STEP_SOLUTIONS][model.interface_darcy_flux_variable])
 
 participant.finalize()

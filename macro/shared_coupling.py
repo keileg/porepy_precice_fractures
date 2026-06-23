@@ -12,7 +12,6 @@ def coupling_faces_and_coords(sd: pp.Grid) -> tuple[np.ndarray, np.ndarray]:
     coords = sd.face_centers[: sd.dim, coupling_faces].T
     return coupling_faces, coords
 
-
 def full_face_flux_from_coupling_faces(
     sd: pp.Grid,
     coupling_faces: np.ndarray,
@@ -39,6 +38,21 @@ def get_face_scalar_grad(
 ) -> np.ndarray:
     return (pressure_gradient_matrix(sd, coupling_faces) @ values)[coupling_faces]
 
+def face_average_from_cells(
+    sd: pp.Grid,
+    faces: np.ndarray,
+    cell_values: np.ndarray,
+) -> np.ndarray:
+    face_cells = abs(sd.cell_faces).tocsr()
+    face_values = np.zeros(faces.size)
+
+    for i, face in enumerate(faces):
+        start = face_cells.indptr[face]
+        end = face_cells.indptr[face + 1]
+        cells = face_cells.indices[start:end]
+        face_values[i] = np.mean(cell_values[cells])
+
+    return face_values
 
 def pressure_gradient_matrix(
     sd: pp.Grid,
