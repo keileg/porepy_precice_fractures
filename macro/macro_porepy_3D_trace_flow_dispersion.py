@@ -21,8 +21,6 @@ from shared_flux import (
 )
 from shared_flow import TracerBC, TracerFluid, TracerIC, ModifiedGeometry, FaceDispersionMixin
 
-mu = 1e-3
-
 class SinglePhaseFlowGeometry(
     ModifiedGeometry,
     TracerFluid,
@@ -39,7 +37,7 @@ class SinglePhaseFlowGeometry(
     pass
 
 
-fluid_constants = pp.FluidComponent(viscosity=mu, density=1000.0)
+fluid_constants = pp.FluidComponent(viscosity=1e-3, density=1000.0)
 solid_constants = pp.SolidConstants(
     permeability=1e-10, normal_permeability=1e-8, residual_aperture=0.001)
 material_constants = {"fluid": fluid_constants, "solid": solid_constants}
@@ -110,7 +108,7 @@ while participant.is_coupling_ongoing():
     # (total_phi [m^3/s] / micro width). Multiply by the PorePy fracture face
     # length to get an integrated macro face flux.
     read_flux_per_width = participant.read_data("Macro-Mesh", "flux", vertex_ids, dt)
-    read_flux = mu * read_flux_per_width * coupling_face_widths
+    read_flux = model.fluid.reference_component.viscosity * read_flux_per_width * coupling_face_widths
 
     valid = np.isfinite(read_flux) & np.isfinite(pressure_grad)
     valid &= np.abs(pressure_grad) > 1e-20
