@@ -51,8 +51,9 @@ class FaceTransmissibilityFluxMixin:
         discr: Union[pp.ad.TpfaAd, pp.ad.MpfaAd] = self.darcy_flux_discretization(
             domains
         )
+        pressure_flux: pp.ad.Operator = discr.flux() @ self.pressure(domains)
         porepy_flux: pp.ad.Operator = (
-            discr.flux() @ self.pressure(domains)
+            pressure_flux
             + discr.bound_flux()
             @ (
                 boundary_operator
@@ -76,7 +77,7 @@ class FaceTransmissibilityFluxMixin:
         )
 
         flux: pp.ad.Operator = porepy_flux + mask * (
-            transmissibility * grad - porepy_flux
+            transmissibility * grad - pressure_flux
         )
         flux.set_name("Darcy_flux")
         return flux

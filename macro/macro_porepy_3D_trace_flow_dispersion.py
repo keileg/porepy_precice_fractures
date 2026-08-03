@@ -134,12 +134,9 @@ while participant.is_coupling_ongoing():
         iterate_index=0,
     )
 
-    # Read in dispersion
+    # Read in dispersion, convert and write
     read_dispersion = participant.read_data("Macro-Mesh", "dispersion", vertex_ids, dt)
     face_dispersion = np.zeros(sd.num_faces)
-    # The micro model returns an apparent dispersion coefficient [m^2/s].
-    # The macro AD operator expects the coefficient in the integrated face mass flux
-    # -C_f grad(z), so C_f = rho * effective_face_area * D.
     fracture_cell_aperture = model.equation_system.evaluate(model.aperture([sd]))
     face_dispersion[coupling_faces] = (
         fluid_constants.density
