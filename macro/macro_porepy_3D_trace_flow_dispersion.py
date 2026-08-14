@@ -9,17 +9,18 @@ from porepy.models.compositional_flow import (
 )
 from porepy.models.fluid_mass_balance import SinglePhaseFlow
 
-from shared_coupling import (
+from shared_operator import (
     coupling_faces_and_coords,
     get_face_scalar_grad,
     get_pressure_grad,
     face_average_from_cells
 )
-from shared_flux import (
+from shared_mixin import (
     FaceTransmissibilityFluxMixin,
     LinearProblemMixin,
+    FaceDispersionMixin
 )
-from shared_flow import TracerBC, TracerFluid, TracerIC, ModifiedGeometry, FaceDispersionMixin
+from shared_flow import TracerBC, TracerFluid, TracerIC, ModifiedGeometry
 
 class SinglePhaseFlowGeometry(
     ModifiedGeometry,
@@ -39,7 +40,7 @@ class SinglePhaseFlowGeometry(
 
 fluid_constants = pp.FluidComponent(viscosity=1e-3, density=1000.0)
 solid_constants = pp.SolidConstants(
-    permeability=1e-10, normal_permeability=1e-8, residual_aperture=0.001)
+    permeability=1e-10, normal_permeability=1e-8, residual_aperture=0.01)
 material_constants = {"fluid": fluid_constants, "solid": solid_constants}
 model_params = {"material_constants": material_constants, 
                 "time_manager": pp.TimeManager(
@@ -185,5 +186,7 @@ while participant.is_coupling_ongoing():
         model.time_manager.increase_time_index()
         model.update_time_step_solution()
         model.save_data_time_step()
+        for intf, data in model.mdg.interfaces(return_data=True):
+                print(data[pp.TIME_STEP_SOLUTIONS][model.interface_darcy_flux_variable])
 
 participant.finalize()

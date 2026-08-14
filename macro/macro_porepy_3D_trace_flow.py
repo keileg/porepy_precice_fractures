@@ -9,11 +9,11 @@ from porepy.models.compositional_flow import (
 )
 from porepy.models.fluid_mass_balance import SinglePhaseFlow
 
-from shared_coupling import (
+from shared_operator import (
     coupling_faces_and_coords,
     get_pressure_grad,
 )
-from shared_flux import (
+from shared_mixin import (
     FaceTransmissibilityFluxMixin,
     LinearProblemMixin,
 )

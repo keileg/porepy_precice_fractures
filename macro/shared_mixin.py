@@ -6,7 +6,7 @@ import numpy as np
 import porepy as pp
 import scipy.sparse as sps
 
-from shared_coupling import pressure_gradient_matrix
+from shared_operator import pressure_gradient_matrix
 
 class LinearProblemMixin:
     def _is_nonlinear_problem(self) -> bool:
@@ -80,4 +80,50 @@ class FaceTransmissibilityFluxMixin:
             transmissibility * grad - pressure_flux
         )
         flux.set_name("Darcy_flux")
+        return flux
+
+class FaceDispersionMixin:
+
+    face_dispersion_cpl = "face_dispersion"
+    face_dispersion_no_cpl = "face_dispersion_mask"
+
+    def _tracer_fraction_gradient_matrix(
+        self, domains: list[pp.Grid]
+    ) -> sps.csr_matrix:
+        matrices = [pressure_gradient_matrix(sd) for sd in domains]
+        if len(matrices) == 0:
+            return sps.csr_matrix((0, 0))
+        return sps.block_diag(matrices, format="csr")
+
+    def component_flux(
+        self, component: pp.Component, domains: pp.SubdomainsOrBoundaries
+    ) -> pp.ad.Operator:
+        flux = super().component_flux(component, domains)
+
+        if component.name != "tracer":
+            return flux
+
+        if len(domains) == 0 or all(isinstance(g, pp.BoundaryGrid) for g in domains):
+            return flux
+
+        if not all(isinstance(g, pp.Grid) for g in domains):
+            raise ValueError("Domains must consist entirely of subdomains.")
+
+        domains = cast(list[pp.Grid], domains)
+        gradient = pp.ad.SparseArray(
+            self._tracer_fraction_gradient_matrix(domains),
+            name="tracer_fraction_gradient_matrix",
+        ) @ component.fraction(domains)
+        dispersion = pp.ad.TimeDependentDenseArray(
+            name=self.face_dispersion_cpl,
+            domains=domains,
+        )
+        mask = pp.ad.TimeDependentDenseArray(
+            name=self.face_dispersion_no_cpl,
+            domains=domains,
+        )
+
+        dispersive_flux = pp.ad.Scalar(-1.0) * mask * dispersion * gradient
+        flux += dispersive_flux
+        flux.set_name(f"component_flux_{component.name}_with_dispersion")
         return flux

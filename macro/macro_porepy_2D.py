@@ -5,7 +5,7 @@ import numpy as np
 import precice
 from porepy.models.fluid_mass_balance import SinglePhaseFlow, BoundaryConditionsSinglePhaseFlow, FluidMassBalanceEquations
 from porepy.applications.md_grids.domains import nd_cube_domain
-from shared_coupling import get_pressure_grad
+from shared_operator import get_pressure_grad
 
 
 h = 0.25
