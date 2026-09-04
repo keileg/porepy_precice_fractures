@@ -6,19 +6,27 @@ import numpy as np
 import porepy as pp
 import scipy.sparse as sps
 from porepy.applications.material_values.fluid_values import water
-from porepy.applications.md_grids.domains import nd_cube_domain
 from porepy.models.compositional_flow import (BoundaryConditionsMulticomponent,
                                               InitialConditionsFractions)
 
 class ModifiedGeometry:
-    mesh_size = 0.1
+    mesh_size = 0.05
     fracture_points = np.array(
-        [[0.2, 0.5, 0.5, 0.2], [0.2, 0.2, 0.5, 0.5], [0.5, 0.5, 0.5, 0.5],]
+        [[0.1, 0.9, 0.9, 0.1], [0.1, 0.1, 0.9, 0.9], [0.2, 0.2, 0.2, 0.2]],
+        dtype=float,
     )
 
     def set_domain(self) -> None:
-        size = self.units.convert_units(1, "m")
-        self._domain = nd_cube_domain(3, size)
+        self._domain = pp.Domain(
+            bounding_box={
+                "xmin": 0.0,
+                "xmax": 1.0,
+                "ymin": 0.0,
+                "ymax": 1.0,
+                "zmin": 0.15,
+                "zmax": 0.35,
+            }
+        )
 
     def set_fractures(self) -> None:
         frac_1_points = self.units.convert_units(self.fracture_points, "m")
@@ -62,22 +70,22 @@ class TracerBC(BoundaryConditionsMulticomponent):
         domain_sides = self.domain_boundary_sides(bg)
         values = np.zeros(bg.num_cells)
         # See section on scaling for explanation of the conversion.
-        values[domain_sides.west] = self.units.convert_units(20, "Pa")
+        values[domain_sides.west] = self.units.convert_units(1000, "Pa")
         values[domain_sides.east] = self.units.convert_units(0, "Pa")
         return values
 
     def bc_values_overall_fraction(
         self, component: pp.Component, bg: pp.BoundaryGrid
     ) -> np.ndarray:
-        """Defines some non-trivial inflow of the tracer component on the inlet
-        (north)."""
+        """Inject tracer at the west inlet for a finite pulse duration."""
 
         z = np.zeros(bg.num_cells)
 
         assert component.name == "tracer", "Only the tracer is independent."
 
-        # Set the tracer concentration to 0.2 on the left boundary
-        domain_sides = self.domain_boundary_sides(bg)
-        z[domain_sides.west] = 0.2 
+        pulse_duration = float(self.params.get("tracer_pulse_duration", 5.0))
+        if self.time_manager.time < pulse_duration:
+            domain_sides = self.domain_boundary_sides(bg)
+            z[domain_sides.west] = 1.0
 
         return z

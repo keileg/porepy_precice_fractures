@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import porepy as pp
 import precice
@@ -21,6 +23,7 @@ from shared_mixin import (
     FaceDispersionMixin
 )
 from shared_flow import TracerBC, TracerFluid, TracerIC, ModifiedGeometry
+from shared_visualisation import BreakthroughCurveWriter, write_time_step_outputs
 
 class SinglePhaseFlowGeometry(
     ModifiedGeometry,
@@ -40,14 +43,13 @@ class SinglePhaseFlowGeometry(
 
 fluid_constants = pp.FluidComponent(viscosity=1e-3, density=1000.0)
 solid_constants = pp.SolidConstants(
-    permeability=1e-10, normal_permeability=1e-8, residual_aperture=0.01)
+    permeability=1e-10, normal_permeability=1e-2, residual_aperture=0.001)
 material_constants = {"fluid": fluid_constants, "solid": solid_constants}
-model_params = {"material_constants": material_constants, 
-                "time_manager": pp.TimeManager(
-                    schedule=[0.0, 18000],
-                    dt_init=60,
-                    constant_dt=True,),
-                }
+model_params = {
+    "material_constants": material_constants,
+    # Rectangular tracer pulse at the west inlet, in physical seconds.
+    "tracer_pulse_duration": 5.0,
+}
 model = SinglePhaseFlowGeometry(model_params)
 model.prepare_simulation()
 
@@ -61,6 +63,13 @@ participant.initialize()
 tracer_component = next(
     component for component in model.fluid.components if component.name == "tracer"
 )
+
+breakthrough_curve = BreakthroughCurveWriter(
+    model,
+    tracer_component,
+    Path(__file__).resolve().parent / "BTC.csv",
+)
+
 
 for subdomain in model.mdg.subdomains():
     data = model.mdg.subdomain_data(subdomain)
@@ -104,6 +113,8 @@ while participant.is_coupling_ongoing():
 
     dt = participant.get_max_time_step_size()
     model.time_manager.dt = dt
+    model.ad_time_step.set_value(dt)
+    model.update_all_boundary_conditions() # switch tracer injection off after given time period
 
     # The received flux values are volumetric fluxes per width
     # (total_phi [m^3/s] / micro width). Multiply by the PorePy fracture face
@@ -185,8 +196,12 @@ while participant.is_coupling_ongoing():
         model.time_manager.increase_time()
         model.time_manager.increase_time_index()
         model.update_time_step_solution()
-        model.save_data_time_step()
-        for intf, data in model.mdg.interfaces(return_data=True):
-                print(data[pp.TIME_STEP_SOLUTIONS][model.interface_darcy_flux_variable])
+        write_time_step_outputs(
+            model,
+            tracer_component,
+            breakthrough_curve,
+            Path(__file__).resolve().parent / "pressure_curve.csv",
+        )
 
 participant.finalize()
+breakthrough_curve.close()
