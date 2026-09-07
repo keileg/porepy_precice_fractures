@@ -123,7 +123,7 @@ class FaceDispersionMixin:
             domains=domains,
         )
 
-        dispersive_flux = pp.ad.Scalar(-1.0) * mask * dispersion * gradient
+        dispersive_flux =  mask * dispersion * gradient
         flux += dispersive_flux
         flux.set_name(f"component_flux_{component.name}_with_dispersion")
         return flux
