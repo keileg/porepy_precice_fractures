@@ -4,10 +4,10 @@ from micro import MicroSimulation
 import argparse
 
 p = argparse.ArgumentParser()
-p.add_argument("-p", type=float, default=100)
-p.add_argument("-a", type=float, default=0.001)
-p.add_argument("-g", type=float, default=0.0)
-p.add_argument("-dt", type=float, default=60)
+p.add_argument("-p", type=float, default=100) # pressure gradient
+p.add_argument("-a", type=float, default=0.001) # mean aperture
+p.add_argument("-g", type=float, default=0.1) # tracer fraction grad
+p.add_argument("-dt", type=float, default=60) # time step length
 p.add_argument("-sid", type=int, default=0)
 a = p.parse_args()
 

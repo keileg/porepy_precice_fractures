@@ -41,9 +41,14 @@ boundaryField
         type            zeroGradient;
     }
 
-    frontAndBack
+    front
     {
-        type            zeroGradient;
+        type            cyclic;
+    }
+
+    back
+    {
+        type            cyclic;
     }
 }
 

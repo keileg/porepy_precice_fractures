@@ -40,9 +40,14 @@ boundaryField
         type            noSlip;
     }
 
-    frontAndBack
+    front
     {
-        type            noSlip;
+        type            cyclic;
+    }
+
+    back
+    {
+        type            cyclic;
     }
 }
 

@@ -46,32 +46,13 @@ runTimeModifiable true;
 
 functions
 {
-    outletAverageVelocity
-    {
-        type            surfaceFieldValue;
-        libs            (fieldFunctionObjects);
-
-        log             true;
-        writeControl    timeStep;
-        writeInterval   10;
-
-        writeFields     false;
-        surfaceFormat   none;
-
-        regionType      patch;
-        name            outlet;
-
-        operation       areaNormalAverage;
-        fields          (U);
-    }
-
     outletFlowRate
     {
         type            surfaceFieldValue;
         libs            (fieldFunctionObjects);
 
         writeControl    timeStep;
-        writeInterval   10;
+        writeInterval   1;
 
         writeFields     false;
 
@@ -82,24 +63,6 @@ functions
         fields          (phi);
     }
 
-	outletMaxVelocity
-    {
-        type            surfaceFieldValue;
-        libs            (fieldFunctionObjects);
-
-        log             true;
-        writeControl    timeStep;
-        writeInterval   10;
-
-        writeFields     false;
-        surfaceFormat   none;
-
-        regionType      patch;
-        name            outlet;
-
-        operation       max;
-        fields          (U);
-    }
 	stopOnUxResidual
     {
         type            runTimeControl;
@@ -111,12 +74,48 @@ functions
             {
                 type            equationInitialResidual;
                 fields          (U.component(0));
-                value           1e-6;
+                value           1e-5;
                 mode            minimum;
             }
         }
 
         satisfiedAction end;
+    }
+
+    Co1
+    {
+        // Mandatory entries (unmodifiable)
+        type            CourantNo;
+        libs            (fieldFunctionObjects);
+
+        // Optional entries (runtime modifiable)
+        rho             rho;
+
+        // Optional (inherited) entries
+        field           phi;
+        enabled         true;
+        log             true;
+        executeControl  timeStep;
+        executeInterval 1;
+        writeControl    timeStep;
+        writeInterval   1;
+    }
+
+    	fieldMaxCo
+    {
+        type            volFieldValue;
+        libs            (fieldFunctionObjects);
+
+        log             true;
+        enabled         true;
+        writeControl    timeStep;
+        writeInterval   1;
+        writeFields     false;
+
+        regionType      all;
+        operation       max;
+
+        fields          (Co);
     }
 }
 

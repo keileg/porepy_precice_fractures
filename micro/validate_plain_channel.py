@@ -17,7 +17,7 @@ from foamlib import FoamCase
 # configuration
 # ---------------------------------------------------------------------
 
-BASE_CASE = Path("example")
+BASE_CASE = Path("example_channel_flow")
 RUN_ROOT = Path("validation_laminar_channel")
 
 INLET_PATCH = "inlet"

@@ -47,15 +47,25 @@ solvers
 
 SIMPLE
 {
-    nNonOrthogonalCorrectors 0;
-    consistent      yes;
+    consistent no;
+    nNonOrthogonalCorrectors 1;
+
+    residualControl
+    {
+        p 1e-6;
+        U 1e-6;
+    }
 }
 
 relaxationFactors
 {
+    fields
+    {
+        p 0.3;
+    }
     equations
     {
-        U               0.7;
+        U 0.7;
     }
 }
 
