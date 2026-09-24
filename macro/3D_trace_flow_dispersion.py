@@ -23,7 +23,10 @@ from shared_mixin import (
     FaceDispersionMixin
 )
 from shared_flow import TracerBC, TracerFluid, TracerIC, ModifiedGeometry
-from shared_visualisation import BreakthroughCurveWriter, write_time_step_outputs
+from shared_visualisation import (
+    BreakthroughCurve,
+    OutletFluxPressureCurve,
+)
 
 class SinglePhaseFlowGeometry(
     ModifiedGeometry,
@@ -47,8 +50,6 @@ solid_constants = pp.SolidConstants(
 material_constants = {"fluid": fluid_constants, "solid": solid_constants}
 model_params = {
     "material_constants": material_constants,
-    # Rectangular tracer pulse at the west inlet, in physical seconds.
-    "tracer_pulse_duration": 5.0,
 }
 model = SinglePhaseFlowGeometry(model_params)
 model.prepare_simulation()
@@ -64,12 +65,16 @@ tracer_component = next(
     component for component in model.fluid.components if component.name == "tracer"
 )
 
-breakthrough_curve = BreakthroughCurveWriter(
+output_directory = Path(__file__).resolve().parent
+breakthrough_curve = BreakthroughCurve(
     model,
     tracer_component,
-    Path(__file__).resolve().parent / "BTC.csv",
+    output_directory / "BTC.csv",
 )
-
+outlet_flux_pressure = OutletFluxPressureCurve(
+    model,
+    output_directory / "BC_outlet_fluid_flux.csv",
+)
 
 for subdomain in model.mdg.subdomains():
     data = model.mdg.subdomain_data(subdomain)
@@ -196,12 +201,11 @@ while participant.is_coupling_ongoing():
         model.time_manager.increase_time()
         model.time_manager.increase_time_index()
         model.update_time_step_solution()
-        write_time_step_outputs(
-            model,
-            tracer_component,
-            breakthrough_curve,
-            Path(__file__).resolve().parent / "pressure_curve.csv",
-        )
+        model.save_data_time_step()
+        breakthrough_curve.register_outlet_flux()
+        outlet_flux_pressure.register()
 
 participant.finalize()
+
 breakthrough_curve.close()
+outlet_flux_pressure.close()

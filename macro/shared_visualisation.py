@@ -4,108 +4,157 @@ import csv
 from pathlib import Path
 from typing import Any
 
+import matplotlib.pyplot as plt
 import numpy as np
 import porepy as pp
 
 
-class BreakthroughCurveWriter:
-    """Write tracer breakthrough at the matrix outlet."""
+class BreakthroughCurve:
+    """Record and plot tracer breakthrough at the east outlet."""
 
-    def __init__(self, model: Any, tracer_component: Any, path: Path) -> None:
+    def __init__(
+        self,
+        model: Any,
+        tracer_component: Any,
+        path: Path,
+        *,
+        subdomain: pp.Grid | None = None,
+    ) -> None:
         self._model = model
         self._tracer_component = tracer_component
-
-        self._outlet_subdomain = model.mdg.subdomains(dim=3)[0]
+        self._outlet_subdomain = subdomain
         self._outlet_faces = np.flatnonzero(
             model.domain_boundary_sides(self._outlet_subdomain).east
         )
-        self._outlet_signs = np.asarray(
-            self._outlet_subdomain.cell_faces[self._outlet_faces, :].sum(axis=1)
-        ).ravel()
 
+        self.times: list[float] = []
+        self.fluid_mass_rates: list[float] = []
+        self.tracer_mass_rates: list[float] = []
+        self.tracer_fractions: list[float] = []
+
+        path.parent.mkdir(parents=True, exist_ok=True)
         self._file = path.open("w", newline="")
         self._writer = csv.writer(self._file)
-        self._writer.writerow(["time_s", "tracer_fraction_flux_averaged"])
+        self._writer.writerow(
+            [
+                "time_s",
+                "tracer_fraction_flux_averaged",
+            ]
+        )
         self._file.flush()
 
-    def write_row(self) -> None:
-        fluid_flux = self._model.equation_system.evaluate(
-            self._model.fluid_flux([self._outlet_subdomain])
+    def register_outlet_flux(self) -> None:
+        """Evaluate and store east-outlet fluxes at the current time step."""
+        fluid_flux = np.asarray(
+            self._model.equation_system.evaluate(
+                self._model.fluid_flux([self._outlet_subdomain])
+            ),
+            dtype=float,
         )
-        tracer_flux = self._model.equation_system.evaluate(
-            self._model.component_flux(
-                self._tracer_component, [self._outlet_subdomain]
-            )
+        tracer_flux = np.asarray(
+            self._model.equation_system.evaluate(
+                self._model.component_flux(
+                    self._tracer_component, [self._outlet_subdomain]
+                )
+            ),
+            dtype=float,
         )
 
-        outward_fluid_flux = self._outlet_signs * fluid_flux[self._outlet_faces]
-        outward_tracer_flux = self._outlet_signs * tracer_flux[self._outlet_faces]
-
-        outflow = outward_fluid_flux > 0.0
-        fluid_mass_rate = float(np.sum(outward_fluid_flux[outflow]))
-        tracer_mass_rate = float(np.sum(outward_tracer_flux[outflow]))
+        fluid_rate = float(np.sum(fluid_flux[self._outlet_faces]))
+        tracer_rate = float(np.sum(tracer_flux[self._outlet_faces]))
         tracer_fraction = (
-            tracer_mass_rate / fluid_mass_rate if fluid_mass_rate > 0.0 else np.nan
+            tracer_rate / fluid_rate if fluid_rate > 0.0 else np.nan
         )
 
-        self._writer.writerow([self._model.time_manager.time, tracer_fraction])
+        time = float(self._model.time_manager.time)
+        self.times.append(time)
+        self.tracer_fractions.append(tracer_fraction)
+        self._writer.writerow([time, tracer_fraction])
         self._file.flush()
 
     def close(self) -> None:
         self._file.close()
 
+class BreakthroughCurve2D(BreakthroughCurve):
+    """Record the east-outlet breakthrough curve for a 2D fracture."""
 
-def write_midline_pressure_profile_x(model: Any, path: Path) -> None:
-    """Write matrix pressure along an x-directed line through its y-z midpoint."""
-    matrix = model.mdg.subdomains(dim=3)[0]
-    cell_centers = np.asarray(matrix.cell_centers)
-    pressure = np.asarray(
-        model.equation_system.evaluate(model.pressure([matrix])), dtype=float
-    ).reshape(-1)
-
-    x_coordinates = cell_centers[0]
-    y_coordinates = cell_centers[1]
-    z_coordinates = cell_centers[2]
-    y_midpoint = 0.5 * (np.min(y_coordinates) + np.max(y_coordinates))
-    z_midpoint = 0.5 * (np.min(z_coordinates) + np.max(z_coordinates))
-    y_distance = np.abs(y_coordinates - y_midpoint)
-    z_distance = np.abs(z_coordinates - z_midpoint)
-    midpoint_cells = np.isclose(
-        y_distance,
-        np.min(y_distance),
-        rtol=0.0,
-        atol=1e-12,
-    ) & np.isclose(
-        z_distance,
-        np.min(z_distance),
-        rtol=0.0,
-        atol=1e-12,
-    )
-
-    profile_x = x_coordinates[midpoint_cells]
-    profile_pressure = pressure[midpoint_cells]
-
-    with path.open("w", newline="") as output_file:
-        writer = csv.writer(output_file)
-        writer.writerow(["time_s", "x_m", "pressure_pa"])
-        for x_value in np.unique(profile_x):
-            same_x = np.isclose(profile_x, x_value, rtol=0.0, atol=1e-12)
-            writer.writerow(
-                [
-                    model.time_manager.time,
-                    x_value,
-                    float(np.mean(profile_pressure[same_x])),
-                ]
-            )
+    def __init__(
+        self,
+        model: Any,
+        tracer_component: Any,
+        path: Path,
+        *,
+        subdomain: pp.Grid | None = None,
+    ) -> None:
+        if subdomain is None:
+            subdomain = model.mdg.subdomains(dim=2)[0]
+        if subdomain.dim != 2:
+            raise ValueError("BreakthroughCurve2D requires a 2D subdomain.")
+        super().__init__(
+            model,
+            tracer_component,
+            path,
+            subdomain=subdomain,
+        )
 
 
-def write_time_step_outputs(
-    model: Any,
-    tracer_component: Any,
-    breakthrough_curve: BreakthroughCurveWriter,
-    pressure_profile_path: Path,
-) -> None:
-    """Write all visualization and diagnostic output for an accepted time step."""
-    model.save_data_time_step()
-    breakthrough_curve.write_row()
-    write_midline_pressure_profile_x(model, pressure_profile_path)
+class OutletFluxPressureCurve:
+    """Write and plot BC pressure difference and total east-outlet fluid flux."""
+
+    def __init__(
+        self,
+        model: Any,
+        path: Path,
+        *,
+        subdomain: pp.Grid | None = None,
+    ) -> None:
+        self._model = model
+        self._subdomain = subdomain
+        self._outlet_faces = np.flatnonzero(
+            model.domain_boundary_sides(self._subdomain).east
+        )
+
+        self._boundary_grid = model.mdg.subdomain_to_boundary_grid(self._subdomain)
+
+        self.data: dict[str, list[float]] = {
+            "time": [],
+            "bc_pressure_difference": [],
+            "outlet_fluid_flux": [],
+        }
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self._file = path.open("w", newline="")
+        self._writer = csv.writer(self._file)
+        self._writer.writerow(self.data.keys())
+        self._file.flush()
+
+    def _pressure_difference_from_bc(self) -> float:
+        boundary_values = np.asarray(
+            self._model.bc_values_pressure(self._boundary_grid), dtype=float
+        )
+        sides = self._model.domain_boundary_sides(self._boundary_grid)
+
+        west_pressure = float(np.mean(boundary_values[sides.west]))
+        east_pressure = float(np.mean(boundary_values[sides.east]))
+        return west_pressure - east_pressure
+
+    def register(self) -> None:
+        fluid_flux = np.asarray(
+            self._model.equation_system.evaluate(
+                self._model.fluid_flux([self._subdomain])
+            ),
+            dtype=float,
+        ).reshape(-1)
+
+        time = float(self._model.time_manager.time)
+        pressure_difference = self._pressure_difference_from_bc()
+        total_outlet_flux = float(np.sum(fluid_flux[self._outlet_faces]))
+
+        self.data["time"].append(time)
+        self.data["bc_pressure_difference"].append(pressure_difference)
+        self.data["outlet_fluid_flux"].append(total_outlet_flux)
+        self._writer.writerow([time, pressure_difference, total_outlet_flux])
+        self._file.flush()
+
+    def close(self) -> None:
+        self._file.close()

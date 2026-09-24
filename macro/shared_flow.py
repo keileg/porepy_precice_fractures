@@ -4,13 +4,14 @@ from typing import Sequence, cast
 
 import numpy as np
 import porepy as pp
-import scipy.sparse as sps
+from scipy.ndimage import gaussian_filter
 from porepy.applications.material_values.fluid_values import water
 from porepy.models.compositional_flow import (BoundaryConditionsMulticomponent,
                                               InitialConditionsFractions)
+from porepy.fracs.fracture_network_3d import FractureNetwork3d
 
 class ModifiedGeometry:
-    mesh_size = 0.05
+    mesh_size = 0.025
     fracture_points = np.array(
         [[0.1, 0.9, 0.9, 0.1], [0.1, 0.1, 0.9, 0.9], [0.2, 0.2, 0.2, 0.2]],
         dtype=float,
@@ -39,6 +40,54 @@ class ModifiedGeometry:
     def meshing_arguments(self) -> dict:
         cell_size = self.units.convert_units(self.mesh_size, "m")
         return {"cell_size": cell_size}
+
+class ModifiedGeometry2D:
+    """A standalone planar grid representing the fracture."""
+    mean_aperture = 0.001
+
+    def set_geometry(self) -> None:
+        bounds = {"xmin": 0.0, "xmax":40 , "ymin": 0.0, "ymax": 1}
+        self._domain = pp.Domain(bounding_box=bounds)
+        
+
+        grid = pp.CartGrid(
+            nx=np.array([200, 5]),
+            physdims=bounds,
+        )
+
+        # Create an MDG that contains only this 2D grid.
+        self.mdg = pp.MixedDimensionalGrid()
+        self.mdg.add_subdomains(grid)
+
+        # Compute cell centers, face centers, volumes, normals, etc.
+        self.mdg.compute_geometry()
+        self.mdg.set_boundary_grid_projections()
+
+        self.nd = 2
+
+    def specific_volume(
+        self,
+        grids: pp.GridLikeSequence,
+    ) -> pp.ad.Operator:
+
+        if len(grids) == 0:
+            return pp.wrap_as_dense_ad_array(
+                0.0,
+                size=0,
+            )
+
+        if all(isinstance(g, pp.Grid) for g in grids):
+            n = sum(g.num_cells for g in grids)
+            return pp.wrap_as_dense_ad_array(
+                self.mean_aperture,
+                size=n,
+                name="fracture_specific_volume",
+            )
+
+        return super().specific_volume(grids)
+
+    def grid_aperture(self, grid: pp.Grid) -> np.ndarray:
+        return np.full(grid.num_cells, self.mean_aperture)
 
 class TracerFluid:
     def get_components(self) -> Sequence[pp.FluidComponent]:
@@ -70,22 +119,21 @@ class TracerBC(BoundaryConditionsMulticomponent):
         domain_sides = self.domain_boundary_sides(bg)
         values = np.zeros(bg.num_cells)
         # See section on scaling for explanation of the conversion.
-        values[domain_sides.west] = self.units.convert_units(1000, "Pa")
+        values[domain_sides.west] = self.units.convert_units(2000, "Pa")
         values[domain_sides.east] = self.units.convert_units(0, "Pa")
         return values
 
     def bc_values_overall_fraction(
         self, component: pp.Component, bg: pp.BoundaryGrid
     ) -> np.ndarray:
-        """Inject tracer at the west inlet for a finite pulse duration."""
+        """Inject tracer at the west inlet."""
 
         z = np.zeros(bg.num_cells)
 
         assert component.name == "tracer", "Only the tracer is independent."
 
-        pulse_duration = float(self.params.get("tracer_pulse_duration", 5.0))
-        if self.time_manager.time < pulse_duration:
-            domain_sides = self.domain_boundary_sides(bg)
-            z[domain_sides.west] = 1.0
+        domain_sides = self.domain_boundary_sides(bg)
+        if self.time_manager.time < 5:
+            z[domain_sides.west] = 1.0# * (bg.cell_centers[1, domain_sides.west] <= 0.55) * (bg.cell_centers[1, domain_sides.west] >= 0.45)
 
         return z

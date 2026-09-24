@@ -57,7 +57,8 @@
     <exchange data="aperture" mesh="Macro-Mesh" from="Macro" to="Micro-Manager"/>
     <exchange data="flux" mesh="Macro-Mesh" from="Micro-Manager" to="Macro"/>
     <exchange data="dispersion" mesh="Macro-Mesh" from="Micro-Manager" to="Macro"/>
-    <relative-convergence-measure data="pressure-grad" mesh="Macro-Mesh" limit="1e-5"/>
+    <relative-convergence-measure data="pressure-grad" mesh="Macro-Mesh" limit="1e-4"/>
+    <absolute-convergence-measure data="tracer-fraction-grad" mesh="Macro-Mesh" limit="1e-4"/>
     <!-- <acceleration:IQN-ILS>
       <data name="flux" mesh="Macro-Mesh"/>
     </acceleration:IQN-ILS> -->
