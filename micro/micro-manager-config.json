@@ -1,5 +1,5 @@
 {
-    "micro_file_name": "micro",
+    "micro_file_names": ["micro"],
     "coupling_params": {
         "precice_config_file_name": "../precice-config.xml",
         "macro_mesh_name": "Macro-Mesh",
@@ -7,10 +7,8 @@
         "write_data_names": ["flux", "dispersion"]
     },
     "simulation_params": {
-        "micro_dt": 60.0,
-        "macro_domain_bounds": [0, 1, 0, 1]
-    },
-    "diagnostics": {
-      "output_micro_sim_solve_time": true
+        "micro_dt": 1000.0,
+        "macro_domain_bounds": [0.0, 50.0, 0.0, 50.0],
+        "decomposition": [1, 1]
     }
 }
