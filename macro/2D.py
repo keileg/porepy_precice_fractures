@@ -192,7 +192,7 @@ while participant.is_coupling_ongoing():
     )
 
     aperture_cpl = face_average_from_cells(
-        sd, coupling_faces, fracture_cell_aperture, averaging="harmonic"
+        sd, coupling_faces, fracture_cell_aperture
     )
     participant.write_data("Macro-Mesh", "aperture", vertex_ids, aperture_cpl)
 

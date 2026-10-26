@@ -42,7 +42,6 @@ def face_average_from_cells(
     sd: pp.Grid,
     faces: np.ndarray,
     cell_values: np.ndarray,
-    averaging: str = "arithmetic",
 ) -> np.ndarray:
     face_cells = abs(sd.cell_faces).tocsr()
     face_values = np.zeros(faces.size)
@@ -53,10 +52,7 @@ def face_average_from_cells(
         cells = face_cells.indices[start:end]
         adjacent_values = cell_values[cells]
 
-        if averaging == "harmonic":
-            face_values[i] = adjacent_values.size / np.sum(1.0 / adjacent_values)
-        else:
-            face_values[i] = np.mean(adjacent_values)
+        face_values[i] = adjacent_values.size / np.sum(1.0 / adjacent_values)
 
     return face_values
 
