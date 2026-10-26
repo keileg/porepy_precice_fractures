@@ -62,9 +62,7 @@ class BreakthroughCurve:
 
         fluid_rate = float(np.sum(fluid_flux[self._outlet_faces]))
         tracer_rate = float(np.sum(tracer_flux[self._outlet_faces]))
-        tracer_fraction = (
-            tracer_rate / fluid_rate if fluid_rate > 0.0 else np.nan
-        )
+        tracer_fraction = tracer_rate / fluid_rate if fluid_rate > 0.0 else np.nan
 
         time = float(self._model.time_manager.time)
         self.times.append(time)
@@ -74,6 +72,7 @@ class BreakthroughCurve:
 
     def close(self) -> None:
         self._file.close()
+
 
 class BreakthroughCurve2D(BreakthroughCurve):
     """Record the east-outlet breakthrough curve for a 2D fracture."""

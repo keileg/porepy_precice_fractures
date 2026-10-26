@@ -7,24 +7,59 @@ import matplotlib.pyplot as plt
 # Folder containing the CSV files
 folder = Path(".")
 
-# Find all files matching pressure_curve*.csv
-files = sorted(folder.glob("pressure_curve*.csv"))
+files = sorted(folder.glob("outlet_flux*.csv"))
+
+series = {
+    "coupling": {
+        "label": "with coupling",
+        "linestyle": "-",
+        "marker": "o",
+        "points": [],
+    },
+    "analytical": {
+        "label": "with cubic law",
+        "linestyle": "--",
+        "marker": "s",
+        "points": [],
+    },
+}
+
+for file in files:
+    case = next((name for name in series if name in file.stem.lower()), None)
+    if case is None:
+        continue
+
+    df = pd.read_csv(file)
+    if df.empty:
+        continue
+
+    final_value = df.iloc[-1]
+    series[case]["points"].append(
+        (
+            float(final_value["bc_pressure_difference"]),
+            float(final_value["outlet_fluid_flux"]),
+        )
+    )
 
 fig, ax = plt.subplots(figsize=(7.5, 5))
 
-for file in files:
-    df = pd.read_csv(file)
+for values in series.values():
+    points = sorted(values["points"])
+    if not points:
+        continue
 
+    pressure_differences, outlet_fluxes = zip(*points)
     ax.plot(
-        df["x_m"],
-        df["pressure_pa"],
-        marker="o",
-        label=file.stem,
+        pressure_differences,
+        outlet_fluxes,
+        linestyle=values["linestyle"],
+        marker=values["marker"],
+        linewidth=2,
+        label=values["label"],
     )
 
-ax.set_xlabel("x_m")
-ax.set_ylabel("Pressure (Pa)")
-ax.set_title("Pressure vs x_m")
+ax.set_xlabel("BC pressure difference (Pa)")
+ax.set_ylabel("Outlet fluid flux")
 
 ax.grid(True, alpha=0.3)
 ax.legend()
@@ -32,11 +67,4 @@ ax.legend()
 fig.tight_layout()
 
 out = "p_comparison.png"
-fig.savefig(out, dpi=200, bbox_inches="tight")
-
-plt.show()
-
-print(f"Saved plot: {out}")
-print(f"Plotted {len(files)} files:")
-for file in files:
-    print(f"  - {file.name}")
+fig.savefig(out, dpi=300, bbox_inches="tight")

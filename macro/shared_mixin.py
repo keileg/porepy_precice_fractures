@@ -12,6 +12,7 @@ class LinearProblemMixin:
     def _is_nonlinear_problem(self) -> bool:
         return False
 
+
 class FaceTransmissibilityFluxMixin:
     """Replace selected face fluxes by a pressure-gradient transmissibility law."""
 
@@ -26,18 +27,14 @@ class FaceTransmissibilityFluxMixin:
 
     @pp.ad.cached_method
     def darcy_flux(self, domains: pp.SubdomainsOrBoundaries) -> pp.ad.Operator:
-        if len(domains) == 0 or all(
-            isinstance(g, pp.BoundaryGrid) for g in domains
-        ):
+        if len(domains) == 0 or all(isinstance(g, pp.BoundaryGrid) for g in domains):
             return self.create_boundary_operator(
                 name=self.bc_data_darcy_flux_key,
                 domains=cast(Sequence[pp.BoundaryGrid], domains),
             )
 
         if not all(isinstance(g, pp.Grid) for g in domains):
-            raise ValueError(
-                "domains should either be grids or boundary grids."
-            )
+            raise ValueError("domains should either be grids or boundary grids.")
 
         domains = cast(list[pp.Grid], domains)
 
@@ -82,6 +79,7 @@ class FaceTransmissibilityFluxMixin:
         flux.set_name("Darcy_flux")
         return flux
 
+
 class FaceDispersionMixin:
 
     face_dispersion_cpl = "face_dispersion"
@@ -123,7 +121,7 @@ class FaceDispersionMixin:
             domains=domains,
         )
 
-        dispersive_flux =  mask * dispersion * gradient
+        dispersive_flux = mask * dispersion * gradient
         flux += dispersive_flux
         flux.set_name(f"component_flux_{component.name}_with_dispersion")
         return flux

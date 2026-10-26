@@ -31,7 +31,7 @@ def breakthrough_properties(
     reached = reached[reached >= start]
 
     if len(reached) > 0:
-        end = reached[0] + 1   # include first fully reached point
+        end = reached[0] + 1  # include first fully reached point
     else:
         end = len(tracer)
 
@@ -59,8 +59,17 @@ def breakthrough_properties(
 
     velocity = length / mean_time
     dispersion = length**2 * time_variance / (2.0 * mean_time**3)
-    
-    print("mean_time: ", mean_time, "time_variance: ", time_variance, "velocity: ", velocity, "dispersion: ", dispersion)
+
+    print(
+        "mean_time: ",
+        mean_time,
+        "time_variance: ",
+        time_variance,
+        "velocity: ",
+        velocity,
+        "dispersion: ",
+        dispersion,
+    )
 
     return dispersion
 

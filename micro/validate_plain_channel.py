@@ -23,13 +23,13 @@ RUN_ROOT = Path("validation_laminar_channel")
 INLET_PATCH = "inlet"
 
 # Geometry
-L = 1.0       # channel length [m]
-H = 0.1       # wall-to-wall gap [m]
-W = 0.1       # nominal width [m]; only used for informational flow-rate checks
+L = 1.0  # channel length [m]
+H = 0.1  # wall-to-wall gap [m]
+W = 0.1  # nominal width [m]; only used for informational flow-rate checks
 
 # Fluid properties
-NU = 1.0e-6   # kinematic viscosity [m^2/s]
-RHO = 1.0e3   # density [kg/m^3]
+NU = 1.0e-6  # kinematic viscosity [m^2/s]
+RHO = 1.0e3  # density [kg/m^3]
 
 # Pressure-drop sweep. Unit: Pa.
 DP_VALUES = [2.5e-3, 5.0e-3, 1.0e-2, 1.6e-2]
@@ -38,6 +38,7 @@ DP_VALUES = [2.5e-3, 5.0e-3, 1.0e-2, 1.6e-2]
 SOLVER = "simpleFoam"
 
 OVERWRITE_RUN_ROOT = True
+
 
 @dataclass
 class ValidationResult:
@@ -48,6 +49,7 @@ class ValidationResult:
     u_mean_ana: float
     err_umax_rel: float
     err_umean_rel: float
+
 
 # Analytical solution
 def to_kinematic_pressure_drop(dp_input: float) -> float:
@@ -75,6 +77,7 @@ def set_pressure_drop(case: FoamCase, dp_kin: float) -> None:
     p0 = case[0]["p"]
     p0.boundary_field[INLET_PATCH].value = dp_kin
 
+
 # Running and reading results
 def run_case(case: FoamCase) -> None:
     """Build mesh and run solver."""
@@ -90,13 +93,11 @@ def extract_u_max(case: FoamCase) -> tuple[float, float]:
     u_mag = np.linalg.norm(U, axis=1)
     return float(np.max(u_mag)), float(final.time)
 
+
 def parse_surface_mean(case_dir: Path) -> float:
     dat = case_dir / "postProcessing" / "outletAverageVelocity/0/surfaceFieldValue.dat"
 
-    lines = [
-        line.strip()
-        for line in dat.read_text().splitlines()
-    ]
+    lines = [line.strip() for line in dat.read_text().splitlines()]
     last = lines[-1]
 
     return float(last.split()[1])
@@ -105,7 +106,7 @@ def parse_surface_mean(case_dir: Path) -> float:
 def run_single(dp: float) -> ValidationResult:
     case_name = f"dp_{dp:.3e}"
     case_dir = RUN_ROOT / case_name
-    
+
     dp_kin = to_kinematic_pressure_drop(dp)
 
     if case_dir.exists():
@@ -137,6 +138,7 @@ def run_single(dp: float) -> ValidationResult:
         err_umean_rel=err_umean_rel,
     )
 
+
 def write_csv(results: Iterable[ValidationResult], out_file: Path) -> None:
     rows = list(results)
     if not rows:
@@ -147,6 +149,7 @@ def write_csv(results: Iterable[ValidationResult], out_file: Path) -> None:
         writer.writeheader()
         for r in rows:
             writer.writerow(r.__dict__)
+
 
 def main() -> None:
     if not BASE_CASE.exists():
@@ -165,6 +168,7 @@ def main() -> None:
     csv_path = RUN_ROOT / "poiseuille_validation_summary.csv"
     write_csv(results, csv_path)
     print(f"\nWrote summary done.")
+
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,3 @@
-
 import sqlite3
 from pathlib import Path
 
@@ -34,7 +33,8 @@ class MicroCache:
         with self._connect() as conn:
 
             # Create the complete table for a new database.
-            conn.execute("""
+            conn.execute(
+                """
                 CREATE TABLE IF NOT EXISTS micro_results (
                     pressure_gradient REAL,
                     mean_aperture REAL,
@@ -43,20 +43,19 @@ class MicroCache:
                     dispersion REAL,
                     counter INTRGER
                 )
-            """)
+            """
+            )
 
     def lookup(self, inputs):
 
         dp = float(inputs["pressure_gradient"])
         aperture = float(inputs["mean_aperture"])
-        scalar_active = int(
-            inputs["scalar_solver_active"]
-        )
+        scalar_active = int(inputs["scalar_solver_active"])
 
-        dp_min = dp / (1.0 + self.PRESSURE_GRAD_RTOL)  - self.PRESSURE_GRAD_ATOL
+        dp_min = dp / (1.0 + self.PRESSURE_GRAD_RTOL) - self.PRESSURE_GRAD_ATOL
         dp_max = dp / (1.0 - self.PRESSURE_GRAD_RTOL) + self.PRESSURE_GRAD_ATOL
         aperture_min = aperture / (1.0 + self.APERTURE_RTOL) - self.APERTURE_ATOL
-        aperture_max = aperture / (1.0 - self.APERTURE_RTOL)+ self.APERTURE_ATOL
+        aperture_max = aperture / (1.0 - self.APERTURE_RTOL) + self.APERTURE_ATOL
 
         with self._connect() as conn:
             row = conn.execute(
@@ -85,7 +84,8 @@ class MicroCache:
             rowid, cached_dp, cached_flux, cached_dispersion = row
             conn.execute(
                 "UPDATE micro_results SET counter = counter + 1 WHERE rowid = ?",
-                (rowid,))
+                (rowid,),
+            )
             conn.commit()
             return cached_flux / cached_dp * dp, cached_dispersion
         return None, None
@@ -111,6 +111,6 @@ class MicroCache:
                     float(inputs["mean_aperture"]),
                     int(inputs["scalar_solver_active"]),
                     float(result["flux"]),
-                    float(result["dispersion"])
+                    float(result["dispersion"]),
                 ),
             )

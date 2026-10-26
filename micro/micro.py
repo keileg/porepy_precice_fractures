@@ -10,7 +10,7 @@ from foamlib import DimensionSet, FoamCase, FoamFile
 from foamlib.postprocessing.load_tables import functionobject, load_tables
 from rich import get_console
 
-from example_flow.makeFractureSTL import (make_fitted_from_top_bot, makeFracture)
+from example_flow.makeFractureSTL import make_fitted_from_top_bot, makeFracture
 from compute_dispersion import breakthrough_properties
 from cacheDB import MicroCache
 
@@ -21,12 +21,15 @@ pGradTol = 1e-1
 switch_on_scalar_solver = os.getenv("solve_scalar", "False").lower()
 run_scalar_solver = switch_on_scalar_solver in ("true", "1", "yes", "y")
 switch_on_flow_solver = os.getenv("solve_flow", "False").lower()
-run_flow_solver = switch_on_flow_solver in ("true", "1", "yes", "y") or run_scalar_solver
+run_flow_solver = (
+    switch_on_flow_solver in ("true", "1", "yes", "y") or run_scalar_solver
+)
 
 
 get_console().quiet = True
 
-class MicroSimulation():
+
+class MicroSimulation:
     _shared_cache = MicroCache("./micro-cache/results.sqlite")
 
     def __init__(self, sim_id):
@@ -34,7 +37,7 @@ class MicroSimulation():
         Constructor of MicroSimulation class.
         """
         self._sim_id = sim_id
-        self._root =  Path(f"./micro-runs/{sim_id}")
+        self._root = Path(f"./micro-runs/{sim_id}")
         self._root_path_flow = self._root / "flow"
         self._root_path_scalar = self._root / "scalar"
 
@@ -53,16 +56,11 @@ class MicroSimulation():
         tracer_fraction_grad = float(macro_data["tracer-fraction-grad"])
         print("micro input aperture:", abs(thickness), " and dp", abs(dp), flush=True)
 
-        flow_solver_active = (
-            run_flow_solver
-            and abs(dp)
-            > pGradTol
-        )
+        flow_solver_active = run_flow_solver and abs(dp) > pGradTol
         scalar_solver_active = (
             flow_solver_active
             and run_scalar_solver
-            and abs(tracer_fraction_grad)
-            > cGradTol
+            and abs(tracer_fraction_grad) > cGradTol
         )
         cache_inputs = {
             "pressure_gradient": abs(dp),
@@ -70,28 +68,35 @@ class MicroSimulation():
             "scalar_solver_active": scalar_solver_active,
         }
 
-        micro_flux = dp * thickness ** 3 / (12.0 * 1e-3)
+        micro_flux = dp * thickness**3 / (12.0 * 1e-3)
         micro_dispersion = 0
 
         if flow_solver_active:
             if use_cache:
-                micro_flux_cached, micro_dispersion_cached = self._shared_cache.lookup(cache_inputs)
+                micro_flux_cached, micro_dispersion_cached = self._shared_cache.lookup(
+                    cache_inputs
+                )
                 if micro_flux_cached is not None:
-                    return {"flux": micro_flux_cached, "dispersion": micro_dispersion_cached}
+                    return {
+                        "flux": micro_flux_cached,
+                        "dispersion": micro_dispersion_cached,
+                    }
 
             self.copy_flow_case()
             fc = FoamCase(self._root_path_flow)
 
             # generate fracture geometry and mesh
             x, y, t, b = makeFracture(
-                aperture=thickness * 1000, # it uses mm
+                aperture=thickness * 1000,  # it uses mm
                 shear=1.0,
                 disc=0.5,
                 roughness=0.2,
                 lambda_abs=2.0,
                 lx=dx * 1000,
             )
-            make_fitted_from_top_bot(x, y, t, b, self._root_path_flow / "system/blockMeshDict", 2, 16)
+            make_fitted_from_top_bot(
+                x, y, t, b, self._root_path_flow / "system/blockMeshDict", 2, 16
+            )
 
             # set pressure difference between inlet and outlet
             fc[0]["p"].boundary_field["inlet"].value = abs(dp * dx / 1000.0)
@@ -99,17 +104,21 @@ class MicroSimulation():
             fc.run()
 
             # read flux am outlet from postprocessing results
-            file = functionobject(file_name="surfaceFieldValue.dat", folder="outletFlowRate")
+            file = functionobject(
+                file_name="surfaceFieldValue.dat", folder="outletFlowRate"
+            )
             fluxes = load_tables(source=file, dir_name=self._root_path_flow)
             flux = fluxes.iloc[-1]["sum(phi)"]  # m^3/s
             micro_flux = flux / 0.01
 
             # read max.(Co) to be used for time step approximation in scalarTransportFoam
             file = functionobject(file_name="volFieldValue.dat", folder="fieldMaxCo")
-            maxCo = load_tables(source=file, dir_name=self._root_path_flow).iloc[-1]["max(Co)"]
+            maxCo = load_tables(source=file, dir_name=self._root_path_flow).iloc[-1][
+                "max(Co)"
+            ]
 
             if scalar_solver_active:
-                print("=====run scalar solve=======" )
+                print("=====run scalar solve=======")
                 self.copy_scalar_case()
                 fs = FoamCase(self._root_path_scalar)
                 latest_time = fc[-1]
@@ -128,7 +137,9 @@ class MicroSimulation():
                 fs.run()
 
                 # read T flux at outlet
-                micro_dispersion = breakthrough_properties(self._root_path_scalar, dx, "outletFlux")
+                micro_dispersion = breakthrough_properties(
+                    self._root_path_scalar, dx, "outletFlux"
+                )
 
                 fc.clean(check=True)
                 fs.clean(check=True)
@@ -136,15 +147,19 @@ class MicroSimulation():
                 print("=====skip scalar solve==")
                 fc.clean(check=True)
             if use_cache:
-                self._shared_cache.store(cache_inputs, {"flux": micro_flux, "dispersion": micro_dispersion})
-                if scalar_solver_active: # save the flow only solve too
+                self._shared_cache.store(
+                    cache_inputs, {"flux": micro_flux, "dispersion": micro_dispersion}
+                )
+                if scalar_solver_active:  # save the flow only solve too
                     cache_inputs_flow = {
-                                "pressure_gradient": abs(dp),
-                                "mean_aperture": thickness,
-                                "scalar_solver_active": 0,
-                            }
-                    self._shared_cache.store(cache_inputs_flow, {"flux": micro_flux, "dispersion": 1e-9})
-        
+                        "pressure_gradient": abs(dp),
+                        "mean_aperture": thickness,
+                        "scalar_solver_active": 0,
+                    }
+                    self._shared_cache.store(
+                        cache_inputs_flow, {"flux": micro_flux, "dispersion": 1e-9}
+                    )
+
         # print("micro dispersion coefficient:", micro_dispersion, " bei flux", micro_flux," tracer grad:", abs(tracer_fraction_grad), " and dp", abs(dp))
         return {"flux": micro_flux, "dispersion": micro_dispersion}
 

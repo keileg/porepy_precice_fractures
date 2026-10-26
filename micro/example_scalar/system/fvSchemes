@@ -27,7 +27,7 @@ gradSchemes
 divSchemes
 {
     default         none;
-    
+
     div(phi,T)      Gauss limitedLinear01 1;;
 }
 

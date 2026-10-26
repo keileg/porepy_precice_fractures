@@ -15,18 +15,19 @@ from shared_operator import (
     coupling_faces_and_coords,
     get_face_scalar_grad,
     get_pressure_grad,
-    face_average_from_cells
+    face_average_from_cells,
 )
 from shared_mixin import (
     FaceTransmissibilityFluxMixin,
     LinearProblemMixin,
-    FaceDispersionMixin
+    FaceDispersionMixin,
 )
 from shared_flow import TracerBC, TracerFluid, TracerIC, ModifiedGeometry
 from shared_visualisation import (
     BreakthroughCurve,
     OutletFluxPressureCurve,
 )
+
 
 class SinglePhaseFlowGeometry(
     ModifiedGeometry,
@@ -46,7 +47,8 @@ class SinglePhaseFlowGeometry(
 
 fluid_constants = pp.FluidComponent(viscosity=1e-3, density=1000.0)
 solid_constants = pp.SolidConstants(
-    permeability=1e-10, normal_permeability=1e-2, residual_aperture=0.001)
+    permeability=1e-10, normal_permeability=1e-2, residual_aperture=0.001
+)
 material_constants = {"fluid": fluid_constants, "solid": solid_constants}
 model_params = {
     "material_constants": material_constants,
@@ -119,13 +121,17 @@ while participant.is_coupling_ongoing():
     dt = participant.get_max_time_step_size()
     model.time_manager.dt = dt
     model.ad_time_step.set_value(dt)
-    model.update_all_boundary_conditions() # switch tracer injection off after given time period
+    model.update_all_boundary_conditions()  # switch tracer injection off after given time period
 
     # The received flux values are volumetric fluxes per width
     # (total_phi [m^3/s] / micro width). Multiply by the PorePy fracture face
     # length to get an integrated macro face flux.
     read_flux_per_width = participant.read_data("Macro-Mesh", "flux", vertex_ids, dt)
-    read_flux = model.fluid.reference_component.viscosity * read_flux_per_width * coupling_face_widths
+    read_flux = (
+        model.fluid.reference_component.viscosity
+        * read_flux_per_width
+        * coupling_face_widths
+    )
 
     valid = np.isfinite(read_flux) & np.isfinite(pressure_grad)
     valid &= np.abs(pressure_grad) > 1e-20
@@ -156,10 +162,7 @@ while participant.is_coupling_ongoing():
     face_dispersion = np.zeros(sd.num_faces)
     fracture_cell_aperture = model.equation_system.evaluate(model.aperture([sd]))
     face_dispersion[coupling_faces] = (
-        fluid_constants.density
-        * aperture_cpl
-        * coupling_face_widths
-        * read_dispersion
+        fluid_constants.density * aperture_cpl * coupling_face_widths * read_dispersion
     )
 
     dispersion_mask = np.zeros(sd.num_faces)

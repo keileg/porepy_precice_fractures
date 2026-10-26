@@ -13,7 +13,7 @@ t = 0.0
 while participant.is_coupling_ongoing():
     dt = participant.get_max_time_step_size()
 
-    dp = np.array([t + 1.0, t+1.1], dtype=float)
+    dp = np.array([t + 1.0, t + 1.1], dtype=float)
 
     flux = participant.read_data(mesh_name, "flux", vertex_ids, 0)
     participant.write_data(mesh_name, "pressure-grad", vertex_ids, dp)
