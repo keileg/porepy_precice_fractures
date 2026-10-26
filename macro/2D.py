@@ -4,9 +4,7 @@ import porepy as pp
 import numpy as np
 import precice
 from porepy.compositional.compositional_mixins import CompositionalVariables
-from porepy.models.compositional_flow import (
-    ComponentMassBalanceEquations,
-)
+from porepy.models.compositional_flow import ComponentMassBalanceEquations
 from porepy.models.fluid_mass_balance import SinglePhaseFlow
 from shared_operator import (
     coupling_faces_and_coords,
@@ -105,7 +103,7 @@ for subdomain in model.mdg.subdomains():
 
 fracture_cell_aperture = model.equation_system.evaluate(model.aperture([sd]))
 aperture_cpl = face_average_from_cells(
-    sd, coupling_faces, fracture_cell_aperture, averaging="harmonic"
+    sd, coupling_faces, fracture_cell_aperture
 )
 pressure = model.equation_system.evaluate(model.pressure([sd]))
 pressure_grad = get_pressure_grad(sd, coupling_faces, pressure)

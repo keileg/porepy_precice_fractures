@@ -77,9 +77,6 @@ def pressure_gradient_matrix(
         cells = fc.indices[start:end]
         signs = fc.data[start:end]
 
-        if cells.size != 2:
-            raise ValueError(f"Face {f} is not an internal face.")
-
         x0 = sd.cell_centers[:, cells[0]]
         x1 = sd.cell_centers[:, cells[1]]
         dist = np.linalg.norm(x1 - x0)

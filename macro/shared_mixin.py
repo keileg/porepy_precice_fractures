@@ -5,8 +5,8 @@ from typing import Sequence, Union, cast
 import numpy as np
 import porepy as pp
 import scipy.sparse as sps
-
 from shared_operator import pressure_gradient_matrix
+
 
 class LinearProblemMixin:
     def _is_nonlinear_problem(self) -> bool:
