@@ -1,0 +1,38 @@
+repos:
+# Official repo for default hooks
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: 'v5.0.0'
+  hooks:
+  - id: check-xml
+  - id: check-merge-conflict
+  - id: mixed-line-ending
+    exclude: \.(png|msh|npz|vtu|brep)$
+  - id: trailing-whitespace
+    args: [--markdown-linebreak-ext=md]
+    exclude: \.(png|msh|npz|vtu|brep)$
+  - id: end-of-file-fixer
+    exclude: \.(png|msh|npz|vtu|brep)$
+# black repo for python formatting
+- repo: https://github.com/ambv/black
+  rev: 25.1.0
+  hooks:
+    - id: black
+      name: format python
+      exclude: \.(png|msh|npz|vtu|brep)$
+# Custom repo for the preCICE configuration formatter
+- repo: https://github.com/precice/config-format
+  rev: 'v1.1.0'
+  hooks:
+  - id: precice-config-format
+    name: format preCICE configs
+- repo: https://github.com/codespell-project/codespell
+  rev: v2.4.1
+  hooks:
+    - id: codespell
+      name: check spelling
+      args: ["-L", "preCICE, precice, nd"]
+      exclude: \.(png|msh|npz|vtu|brep)$
+- repo: https://github.com/rhysd/actionlint
+  rev: v1.7.7
+  hooks:
+    - id: actionlint

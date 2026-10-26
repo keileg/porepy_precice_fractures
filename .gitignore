@@ -19,6 +19,8 @@ profiling.db
 profiling.csv
 trace.json
 profiling.pftrace
+macro/breakthrough_curve.csv
+macro/dispersion_comparison/
 
 # Python
 .venv/
