@@ -44,6 +44,7 @@ class ModifiedGeometry:
 class ModifiedGeometry2D:
     """A standalone planar grid representing the fracture."""
     mean_aperture = 0.001
+    aperture_amplitude = 0.2  # Relative amplitude
 
     def set_geometry(self) -> None:
         bounds = {"xmin": 0.0, "xmax":40 , "ymin": 0.0, "ymax": 1}
@@ -65,6 +66,27 @@ class ModifiedGeometry2D:
 
         self.nd = 2
 
+        self._aperture_by_grid = {
+            id(grid): self.grid_aperture(grid)
+        }
+
+    def grid_aperture(
+        self,
+        grid: pp.Grid,
+    ) -> np.ndarray:
+
+        y = grid.cell_centers[1, :]
+
+        Ly = 1.0
+
+        aperture = self.mean_aperture * (
+            1.0
+            + self.aperture_amplitude
+            * np.sin(np.pi * y / (Ly))
+        )
+
+        return aperture
+
     def specific_volume(
         self,
         grids: pp.GridLikeSequence,
@@ -77,17 +99,18 @@ class ModifiedGeometry2D:
             )
 
         if all(isinstance(g, pp.Grid) for g in grids):
-            n = sum(g.num_cells for g in grids)
+            aperture = np.concatenate([
+                self._aperture_by_grid[id(g)]
+                for g in grids
+            ])
+
             return pp.wrap_as_dense_ad_array(
-                self.mean_aperture,
-                size=n,
+                aperture,
+                size=aperture.size,
                 name="fracture_specific_volume",
             )
 
         return super().specific_volume(grids)
-
-    def grid_aperture(self, grid: pp.Grid) -> np.ndarray:
-        return np.full(grid.num_cells, self.mean_aperture)
 
 class TracerFluid:
     def get_components(self) -> Sequence[pp.FluidComponent]:
